@@ -1,0 +1,130 @@
+﻿通用命令：
+"*IDN?",身份鉴别指令
+*CLS,清楚状态命令
+*ESE?,标准状态启用命令|查询
+*ESR?,标准事件状态暂存1器查询
+*IDN?,身份鉴别查询
+*OPC,操作完成命令
+*OPC?,操作完成查询
+*RCL,重新呼叫仪器状态命令
+*RST,重新设置命令
+*SAV,存储命令-*SAV 5
+*SRE,服务需求启用命令|查询
+*STB？,读取状态位元查询
+MODE
+电子负载操作模式
+语法MODE<SPACE><NRf>
+参数<CRD>,CCL,CCM,CCH,CRLCRM,CRH,CVL,CVM,CVH,CPL,CPM,CPH,CCDL,CCDM,CCDH,BATL,BATM,
+BATH,PROG,CZL,CZM,CZH
+查询MODE?
+LOAD
+使电子负载启用或停用
+LOAD ON(1);
+LOAD 0(OFF);
+查询LOAD?
+LOAD:PROT? 回传电子负载状态
+LOAD:PROT:CLE 重设电子负载状态
+LOAD:SHOR ON/OFF 启用/停用短路模拟
+LOAD:SHOR:KEY TOGGLE/HOLD 短路键模式为toggle/hold
+CONF:VOLT:RANG  HIGH/M/0 设定电压档位为high/middle/low
+CONF:VOLT:ON 0.5/500mV/MAX/MIN 设定Von=0.5V/最大值/最小值
+CONF:VOLT:OFF 0.5/500mV/MAX/MIN 设定Voff=0.5V/最大值/最小值
+CONF:VOLT:LATC OFF/1 设定Von锁定功能
+CONF:VOLT:LATC:RES 重新设定Von信号
+CONF:VOLT:SIGN PLUS/1 设定电压符号为PLUS/Minus
+CONF:WIND  0.5/MAX/MIN 设定视窗时间0.5s/最大值/最小值
+CONF:SYNC:MODE  MASTER/0 设定同步模式为MASTER/NONE
+CONF:PARA:INIT ON/0 负载进入/退出并联模式
+CONF:PARA:MODE MASTER/0  设定并联模式为MASTER/NONE
+CONF:PARA:NUM 设定并联装置数量
+CONF:AUTO:ON ON/0 设定负载模组在开机时执行自动load on
+CONF:ENT:KEY NEXT/1 设定ENTER键功能为NEXT/FIXED
+CONF:SHOR:KEY DISABLE/1 设定SHORT键为停用/启用
+CONF:SOUN OFF/1 设定蜂鸣器为OFF/ON
+CURR:STAT:L1 20/10A/MAX/MIN 设定电流模式静态负载参数L1=20A/10A/最大值/最小值
+CURR:STAT:RISE 2.5/  1A/us  /MAX/MIN 设定电流模式上升斜率为2.5 A/us  / 1A/us/最大值/最小值
+CURR:STAT:FALL 设定电流模式下降斜率
+CURR:STAT:VRNG HIGH/M/0 设定CC模式下电压档位为HIGH/MIDDLE/LOW
+CURR:DYN:L1  设定L1动态负载参数
+CURR:DYN:T1 10ms/90ms/MAX/MIN 设定动态期间T1
+CURR:DYN:REP 500/MAX/MIN 设定重复次数
+CURR:DYN:RISE 设定电流动态模式上升斜率
+CURR:DYN:FALL 设定电流动态模式下降斜率
+CURR:DYN:VRNG 设定CCD模式下电压档位
+RES:STAT:L1 20/10OHM/MAX/MIN 设定电阻模式下静态电阻值L1=20Ω/10Ω/最大值/最小值
+RES:STAT:RISE 设定电阻模式的电流上升斜率
+RES:STAT:FALL 设定电阻模式的电流下降斜率
+RES:STAT:IRNG 设定CR模式下的电流量测档位
+VOLT:STAT:L1  8/24V/MAX/MIN 设定电压模式下静态负载电压 8V/24V/最大值/最小值
+VOLT:STAT:ILIM 3/MAX/MIN 在定电压模式设定限电流为3A/最小值/最大值
+VOLT:STAT:RES FAST/NORMAL/SLOW 在定电压模式设定回复速度
+VOLT:STAT:IRNG 在定电压模式设定设定电流量测档位
+POW:STAT:L1 20/10W/MAX/MIN 设定功率模式的静态负载功率
+POW:STAT:RISE 设定功率模式的电流上升斜率
+POW:STAT:FALL 设定功率模式的电流下降斜率
+POW:STAT:VRNG 设定功率模式的电压量测档位
+[ADV:]BATT:MODE CC/CR/CP 设定电池放电模式下的执行模式
+BATT:VAL 设定电池放电模式下执行模式的负载值
+当BATT:MODE 设置为CC时:
+BATT:VAL  0.5/500mA/MAX/MIN 设定电流=0.5A/最大值/最小值
+CR时：
+BATT:VAL  0.5/500mΩ/MAX/MIN 设定电流=0.5Ω/最大值/最小值
+CP时：
+BATT:VAL  0.5/500mW/MAX/MIN 设定电流=0.5W/最大值/最小值
+BATT:RISE 设定电池放电模式下电流的上升斜率
+BATT:FALL 设定电池放电模式下电流的下降斜率
+BATT:ENDV 0.5/500mV/MAX/MIN 设定结束电压0.5V/最大值/最小值
+BATT:TOUT 100/MAX/MIN 设定暂停时间100s/最大值/最小值
+IMP:STAT:CL 0.02/100μF/MAX/MIN 设定恒阻抗模式的等效并联负载电容=20mF/100μF
+IMP:STAT:LS 0.00002/1μH/MAX/MIN  设定恒阻抗模式的等效串联电感=20μH/1μH
+IMP:STAT:RS 20/10OHM/MAX/MIN 设定恒阻抗模式的等效串联电阻=20Ω/10Ω
+IMP:STAT:RL 设定恒阻抗模式的等效并联电阻
+DIG:ABOR 终止数位化功能
+DIG:INIT 起始数位化功能
+DIG:SAMP:POIN 500/MAX/MIN 设定取样点数500/最大值/最小值
+DIG:SAMP:TIME 0.02/20ms/MAX/MIN 设定取样时间20ms
+DIG:TRIG ON/0 设定触发状态
+DIG:TRIG:POIN 500/MAX/MIN 设定触发点数
+DIG:TRIG:SOUR LOADON/LOADOFF/TTL/BUS/MANUAL  设定触发源
+DIG:WAV:CAP 启动波形传输
+DIG:WAV:DATA? <V/I> 回传波形资料
+TIM OFF/ON 停用/启用TIMING 功能
+TIM:TRIG:MODE RISE/FALL 设定触发模式为上升沿触发/下降沿触发
+TIM:TRIG:VSTA 8/24V/MAX/MIN 设定开始电压8V/24V
+TIM:TRIG:VEND 设定结束电压
+TIM:TOUT 设定逾时时间s
+TIM:RES? 回传TIMING功能结果
+FETC:AH?  回传ampere-hour的测量值
+FECT:CURR?  回传电流的测量值
+FECT:CURR:PEAK+?  回传最大峰值电流的测量值
+FETC:FREQ?  回传频率的测量值
+FETC:POW?  回传功率的测量值
+FETC:STAT?  回传负载模组的即时状态
+FETC:TIME?  回传时间的测量值
+FETC:WH?  回传watt-hour的测量值
+FETC:VOLT?  回传电压的测量值
+FETC:VOLT:MAX?  回传最高电压的测量值
+FETC:VOLT:MIN?  回传最低电压的测量值
+FETC:VOLT:PEAK+?  回传最大峰值电压的测量值
+FETC:VOLT:PEAK+:FREQ?  回传最大峰值电压时频率的测量值
+FETC:VOLT:PEAK-?  回传最小峰值电压的测量值
+FETC:VOLT:PEAK-:FREQ?  回传最小峰值电压时频率的测量值
+MEAS:CURR? 回传即时电流的测量值
+MEAS:INP LOAD/UUT 选择电压测量信号来源
+MEAS:POW? 回传即时功率的测量值
+MEAS:VOLT? 回传即时电压的测量值
+SYST:REM 只能在USB/Ethernet时使用。停用前面板
+SYST:LOC只能在USB/Ethernet时使用。可以使用前面板
+
+
+
+
+
+
+
+
+
+
+
+
+

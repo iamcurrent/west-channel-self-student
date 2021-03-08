@@ -1621,7 +1621,7 @@ namespace wtf
         }
 
 
-
+        //计算fft
         private Double[] computeFFT(Double [] data) {
             object result = null;
             
@@ -1748,7 +1748,7 @@ namespace wtf
 
                         } else if (computeHigh) {
 
-                            if (channelNum.ElementAt(i) == 11)
+                            if (channelNum.ElementAt(i) == 15)
                             {
                                 double[] ds = new double[ydisplay.Count];
                                 for (int j = 0; j < ds.Length; j++)
@@ -1893,7 +1893,7 @@ namespace wtf
 
                         } else if (computeHigh) {
 
-                            if (channelNum.ElementAt(i) == 11)
+                            if (channelNum.ElementAt(i) == 15)
                             {
                                 double[] ds = new double[y.Count];
                                 for (int j = 0; j < ds.Length; j++)
