@@ -21,6 +21,9 @@ namespace wtf
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>()};
 
+ 
+
+
         public static List<List<Double>> dataCompute = new List<List<Double>>() { new List<double>(), new List<double>(), new List<double>(), new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),

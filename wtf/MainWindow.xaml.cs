@@ -1492,89 +1492,11 @@ namespace wtf
         {
             (double mouseX, double mouseY) = heatPlotWindow.GetMouseCoordinates();
         
-            //sph.HighlightClear();
-            //var (x, y, index) = sph.HighlightPointNearest(mouseX, mouseY);
-           // heatPlotWindow.Render();
+      
 
      
         }
-        //导出数据
-        /* private void bt_export_Result_Click(object sender, RoutedEventArgs e)
-         {
-             String current_directory = Environment.CurrentDirectory;
-             String[] para = current_directory.Split('\\');
-             String file_name = para[0] + "\\" + para[1] + "\\" + "defectInfo.txt";
-             if (File.Exists(file_name) == false)
-             {
-                 FileStream fs = File.Create(file_name);
-                 fs.Close();
-             }
-             else
-             {
-                 File.Delete(file_name);
-                 FileStream fs = File.Create(file_name);
-                 fs.Close();
-             }
-
-             using (StreamWriter sw = new StreamWriter(file_name, true))
-             {
-
-                 int dim1 = peakMapValue.GetLength(0);
-                 int dim2 = peakMapValue.GetLength(1);
-                 for (int i = 0; i < dim1; i++)
-                 {
-                     int channel = i / 4;
-                     List<double> rs = new List<double>();
-                     for (int k = 0; k < dim2; k++)
-                     {
-                         rs.Add((double)peakMapValue.GetValue(i, k));
-                     }
-                     double Max_Value = rs.Max();
-                     double Min_Value = rs.Min();
-                     if (Max_Value - Min_Value < 1)
-                     {
-                         sw.WriteLine("通道" + channel + "-" + i % 4 + "无缺陷");
-                         sw.Flush();
-                     }
-                     else
-                     {
-                         List<int> cor = new List<int>();
-                         for (int j = 0; j < rs.Count - 1; j++)
-                         {
-                             if (rs[j].Equals(Max_Value))
-                             {
-                                 cor.Add(j);
-                             }
-                         }
-
-                         int count = 0;
-                         for (int k = 0; k < cor.Count - 1; k++)
-                         {
-                             if ((cor[k] + 1) == cor[k + 1])
-                             {
-                                 count++;
-                             }
-                             else
-                             {
-
-                                 sw.Write("通道" + channel + "-" + i % 4+ ":坐标>" + (cor[k - count + 1]) + "," + cor[k] + "脉冲宽度>" + ((count)*2.5) + "\n");
-                                 sw.Flush();
-                                 count = 0;
-                             }
-                             if (k == cor.Count - 2)
-                             {
-
-                                 sw.Write("通道" + channel + "-" + i % 4+ ":坐标>" + (cor[k - count + 1]) + "," + cor[k] + "脉冲宽度>" + ((count) * 2.5) + "\n");
-                                 sw.Flush();
-                                 break;
-                             }
-                         }
-
-                     }
-                 }
-
-             }
-         }*/
+       
         private static readonly object locker = new object();
 
         private void playSelectLines1()
@@ -1733,14 +1655,21 @@ namespace wtf
                             Double[] usedata = computeFFT(ds);
 
                             List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                            
-                            for (int c = 0; c < lis.Count; c++) {
-                                if (channelNum.ElementAt(i) == 12) {
-                                    lis[c] = lis[c] +i;
 
-                                }else
-                                lis[c] = lis[c];
-                            
+
+                            UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
+
+                            for (int c = 0; c < lis.Count; c++) {
+                                if (channelNum.ElementAt(i) == 12)
+                                {
+                                    lis[c] = lis[c] + i;
+                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                }
+                                else
+                                {
+                                    lis[c] = lis[c];
+                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                }
                             }
 
                             //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
@@ -1761,13 +1690,39 @@ namespace wtf
 
                                 //获取指定频段范围
                                 List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                                lis.Sort();
+                                /*lis.Sort();
      
                                 double max1 = lis[lis.Count - 1];
                                 double max2 = lis[lis.Count - 2];
 
                                 int index1 = usedata.ToList<Double>().IndexOf(max1);
-                                int index2 = usedata.ToList<Double>().IndexOf(max2);
+                                int index2 = usedata.ToList<Double>().IndexOf(max2);*/
+
+                                double max1 = lis.Max();
+                                int index1 = lis.IndexOf(max1);
+
+                                List<Double> left = lis.GetRange(0, index1 - 2000);
+                                List<Double> right = lis.GetRange(index1+2000,lis.Count-index1-2000);
+
+                                double max_left = left.Max();
+                                double max_right = right.Max();
+                                int index2 = 0;
+
+                                if (max_left > max_right)
+                                {
+                                    index2 = left.IndexOf(max_left);
+
+                                }
+                                else {
+
+                                    index2 = right.IndexOf(max_right) + index1 + 2000;
+                                
+                                }
+
+
+
+           
+                       
 
                                 UserDef.freq11.ElementAt(0).Add(index1);
                                 UserDef.freq11.ElementAt(1).Add(index2);
@@ -1800,6 +1755,7 @@ namespace wtf
 
                                 double max = lis.Max();
                                 double index = (double)(lis.IndexOf(max));
+
                                 freq.ElementAt(channelNum.ElementAt(i)).Add(index + 0.3 * i);
 
 
@@ -1875,16 +1831,22 @@ namespace wtf
 
                             Double[] usedata = computeFFT(ds);
                             List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+
+                            UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
                             
+
                             for (int c = 0; c < lis.Count; c++)
                             {
                                 if (channelNum.ElementAt(i) == 12)
                                 {
                                     lis[c] = lis[c] + i;
-
+                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
                                 }
                                 else
+                                {
                                     lis[c] = lis[c];
+                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                }
 
                             }
                             //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
@@ -1906,14 +1868,29 @@ namespace wtf
 
                                 //获取指定频段范围
                                 List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                                lis.Sort();
-                   
+                                double max1 = lis.Max();
+                                int index1 = lis.IndexOf(max1);
 
-                                double max1 = lis[lis.Count - 1];
-                                double max2 = lis[lis.Count - 2];
+                                List<Double> left = lis.GetRange(0, index1 - 2000);
+                                List<Double> right = lis.GetRange(index1 + 2000, lis.Count - index1 - 2000);
 
-                                int index1 = usedata.ToList<Double>().IndexOf(max1);
-                                int index2 = usedata.ToList<Double>().IndexOf(max2);
+                                double max_left = left.Max();
+                                double max_right = right.Max();
+                                int index2 = 0;
+
+                                if (max_left > max_right)
+                                {
+                                    index2 = left.IndexOf(max_left);
+
+                                }
+                                else
+                                {
+
+                                    index2 = right.IndexOf(max_right) + index1 + 2000;
+
+                                }
+
+                               
 
                                 UserDef.freq11.ElementAt(0).Add(index1);
                                 UserDef.freq11.ElementAt(1).Add(index2);
@@ -2026,57 +2003,7 @@ namespace wtf
 
                 freqflag = false;
             }
-            /*Thread thread = new Thread(new ThreadStart(computeFFT));
-            thread.Start();*/
-
-
-            /*if (heatDiplay.IsVisible)
-            {
-                heatDiplay.Visibility = Visibility.Hidden;
-                heatPlotWindow.Visibility = Visibility.Visible;
-                bt_display_mode.Content = "C扫图";
-            } else
-            {
-                heatDiplay.Visibility = Visibility.Visible;
-                heatPlotWindow.Visibility = Visibility.Hidden;
-                bt_display_mode.Content = "C曲线";
-            }*/
-            //int len = data.ElementAt(channelNum.ElementAt(0)).Count;
-           /* if (1 > 0)
-            {
-       
-
-                
-                double[] s = new double[463201];
-                double[] s1 = new double[463202];
-                for (int i = 0; i < 463202; i++)
-                {
-                    if(i<s.Length)
-                    s[i] = rand.NextDouble();
-                    if(i<s1.Length)
-                    s1[i] = rand.NextDouble();
-
-                }
-
-              
-                heatPlotWindow.plt.Clear();
-
-                double[] x_axis = new double[s.Length];
-                double[] x_axis1 = new double[s1.Length];
-                for (int j = 0; j < x_axis1.Length; j++)
-                {   
-                    if(j<x_axis.Length)
-                    x_axis[j] = j * (double)UserDef.Frequency / (double)s.Length;
-                    if(j<x_axis1.Length)
-                    x_axis1[j] = j * (double)UserDef.Frequency / (double)s1.Length;
-
-                }
-                heatPlotWindow.plt.PlotSignalXY(x_axis, s);
-                heatPlotWindow.plt.PlotSignalXY(x_axis1, s1);
-                heatPlotWindow.plt.Legend();
-                heatPlotWindow.Render();
-
-            }*/
+          
         }
 
        
@@ -2185,6 +2112,55 @@ namespace wtf
             }
 
         }
+
+        //保存特征
+        private void button5_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Forms.SaveFileDialog saveFileDialog = new System.Windows.Forms.SaveFileDialog();
+            saveFileDialog.Filter = "csv文件|*.csv";
+            saveFileDialog.FilterIndex = 2;
+            saveFileDialog.RestoreDirectory = true;
+            saveFileDialog.InitialDirectory = "I:\\频谱数据\\";
+            saveFileDialog.FileName = DateTime.Now.ToString("MM-dd-H-mm-ss_");
+            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+
+                String fileName = saveFileDialog.FileName;
+                double[,] matdata = new double[channelNum.Count, x.Count];
+                int save_index = 0;
+                for (int i = 0; i < channelNum.Count; i++)
+                {
+                    for (int j = 0; j < UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Count; j++)
+                    {
+
+                        matdata[save_index, j] = dataToSave.ElementAt(channelNum.ElementAt(i)).ElementAt(j);
+                    }
+                    save_index++;
+
+                }
+
+
+
+                if (fileName.Contains(".csv"))
+                {
+                    StreamWriter swt = new StreamWriter(fileName);
+                    for (int i = 0; i < matdata.GetLength(1); i++)
+                    {
+                        for (int j = 0; j < matdata.GetLength(0); j++)
+                        {
+
+                            swt.Write(matdata[j, i].ToString() + ",");
+
+                        }
+
+                        swt.Write("\r\n");
+                    }
+                    swt.Flush();
+                    swt.Close();
+                }
+            }
+
+            }
 
         private void lb_dataList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

@@ -63,8 +63,8 @@
         <TextBox x:Name="tb_startTime"  HorizontalAlignment="Left"  Height="23" Margin="7,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="54"  MouseLeave="tb_startTime_TextChanged" LostFocus="tb_startTime_LostFocus"/>
         <TextBox x:Name="tb_stepTime" HorizontalAlignment="Left" Height="23" Margin="72,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="56" RenderTransformOrigin="0.75,0.391"  MouseLeave="tb_stepTime_TextChanged" LostFocus="tb_stepTime_LostFocus"/>
         <TextBox x:Name="tb_endTime" HorizontalAlignment="Left" Height="23" Margin="140,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50" RenderTransformOrigin="0.75,0.391" MouseLeave="tb_endTime_TextChanged" LostFocus="tb_endTime_LostFocus"/>
-        <Button x:Name="bt_save_all_mat" Content="保存数据" Grid.Column="2" HorizontalAlignment="Left" Margin="374,11,0,38" Grid.Row="1" Width="82" RenderTransformOrigin="0.687,-0.184" Click="bt_save_all_mat_Click"/>
-        <Button x:Name="bt_display_mode" Content="频谱图" Grid.Column="2" HorizontalAlignment="Left" Margin="164,12,0,47" Width="52" Click="bt_display_mode_Click" Grid.Row="1" RenderTransformOrigin="-0.019,1.435"/>
+        <Button x:Name="bt_save_all_mat" Content="保存原始数据" Grid.Column="2" HorizontalAlignment="Left" Margin="374,11,0,89" Grid.Row="1" Width="82" RenderTransformOrigin="0.687,-0.184" Click="bt_save_all_mat_Click"/>
+        <Button x:Name="bt_display_mode" Content="频谱图" Grid.Column="2" HorizontalAlignment="Left" Margin="164,12,0,103" Width="52" Click="bt_display_mode_Click" Grid.Row="1" RenderTransformOrigin="-0.019,1.435"/>
         <CheckBox x:Name="cb_Check_All" Content="全不选" Grid.Column="2" HorizontalAlignment="Left" Margin="10,35,0,0" Grid.Row="1" VerticalAlignment="Top" Click="cb_Check_All_Click"  />
         <CheckBox x:Name="cb_method_static" Content="统计法" HorizontalAlignment="Left" Margin="0,0,0,165" VerticalAlignment="Bottom" RenderTransformOrigin="-8.515,-13.533" Click="cb_method_static_Click" Visibility="Hidden"/>
         <Button x:Name="timeOutSave" Content="定时存储" HorizontalAlignment="Left" Margin="10,596,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="-0.605,0.737" Click="timeOutSave_Click"/>
@@ -76,6 +76,7 @@
         <TextBox x:Name="textBox" Grid.Column="2" HorizontalAlignment="Left" Height="23" Margin="374,119,0,-45" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="120"/>
         <Label x:Name="label" Content="频段" Grid.Column="2" HorizontalAlignment="Left" Margin="314,117,0,-20" Grid.Row="1" VerticalAlignment="Top"/>
         <Button x:Name="button4" Content="最高频点幅值" Grid.Column="2" HorizontalAlignment="Left" Margin="164,142,0,-19" Grid.Row="1" VerticalAlignment="Top" Width="76" Click="button4_Click"/>
+        <Button x:Name="button5" Content="保存特征" Grid.Column="2" HorizontalAlignment="Left" Margin="374,75,0,0" Grid.Row="1" VerticalAlignment="Top" Width="82" Height="33" Click="button5_Click"/>
 
     </Grid>
 </Window>
