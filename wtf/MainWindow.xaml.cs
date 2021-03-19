@@ -36,6 +36,7 @@ using Neuronic.TimeFrequency;
 using Neuronic.TimeFrequency.Kernels;
 using Neuronic.TimeFrequency.Transforms;
 using Neuronic.TimeFrequency.Wavelets;
+using System.IO.MemoryMappedFiles;
 
 namespace wtf
 {
@@ -62,11 +63,25 @@ namespace wtf
         MLApp.MLApp matlab = null;
        
         private WebSocketServer webSocketServer;
-        
+       /* MemoryMappedFile memoryFile = null;
+        MemoryMappedViewAccessor accessor1;
+        long capacity = 1 << 10 << 10;*/
+
         //private static volatile List<List<Double>> dataToSave = new List<List<Double>>();
         public MainWindow()
         {
             InitializeComponent();
+           /* try
+            {
+                memoryFile = MemoryMappedFile.CreateOrOpen("MMAPF", capacity, MemoryMappedFileAccess.ReadWrite);
+                accessor1 = memoryFile.CreateViewAccessor(0, capacity);
+                
+            }
+            catch (Exception e)
+            {
+                
+            }*/
+
             Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
             matlab = System.Activator.CreateInstance(matlabAppType) as MLApp.MLApp;
             string path_project = System.IO.Directory.GetCurrentDirectory();
@@ -657,6 +672,7 @@ namespace wtf
 
 
         private System.Threading.Timer timer1;
+      
         
         private void Start2991_Click(object sender, RoutedEventArgs e)
         {
@@ -690,11 +706,10 @@ namespace wtf
                 if (timer2 != null) {
                     UserDef.timeOut = false;
                     timer2.Dispose();
-                
                 }
                 if(!timeOutSave.IsEnabled)
                 timeOutSave.IsEnabled = true;
-
+                changeCondition();
             }
            
         }
@@ -1562,6 +1577,91 @@ namespace wtf
         }
 
 
+        private double computeRatio(double f)
+        {
+
+            //4635700.792617997 -1447480.768970162 276785.80297208356
+            double a = 4635700.792617997;
+            double b = -1447480.768970162;
+            double c = 276785.80297208356;
+            double ct = c - f;
+
+            double v = (-b - Math.Sqrt(b * b - 4 * a * ct)) / (2 * a);
+            //double v1 = (-b + Math.Sqrt(b * b - 4 * a * ct)) / (2 * a);
+
+            //double ks = v > v1 ? v1 : v;
+
+
+            return 600.25*v;
+
+        }
+
+        private delegate void FlushClient();
+        private static char[] classer = new char[2];
+
+        //获取分类的结果
+        private void getClasserOut()
+        {
+            
+
+            long capacity = 1 << 10 << 10;
+
+            //创建或者打开共享内存
+            using (var mmf = MemoryMappedFile.CreateOrOpen("testMmf", capacity, MemoryMappedFileAccess.ReadWrite))
+            {
+                //通过MemoryMappedFile的CreateViewAccssor方法获得共享内存的访问器
+                var viewAccessor = mmf.CreateViewAccessor(0, capacity);
+                //循环写入，使在这个进程中可以向共享内存中写入不同的字符串值
+                while (freqflag)
+                {
+                 
+                    viewAccessor.Flush();
+                    Byte[] charsInMMf = new Byte[2];
+                    //读取字符
+                    viewAccessor.ReadArray<Byte>(0, charsInMMf, 0, 2);
+
+                    char[] cs = new char[2];
+                    for (int i = 0; i < charsInMMf.Length; i++)
+                    {
+
+                        cs[i] = (char)charsInMMf[i];
+                    }
+
+                    classer = cs;
+                    
+                    
+
+                    /*if (charsInMMf[0] != 0 && charsInMMf[1] != 0)
+                    {
+                        this.textClasser.Dispatcher.Invoke(new Action(() =>
+                        {
+                            if (this.textClasser.LineCount > 20)
+                            {
+
+                                this.textClasser.Clear();
+                            }
+
+
+
+                            this.textClasser.AppendText("高峰:" + cs[0] + "电源" + "--" + "低峰:" + cs[1] + "电源\n");
+                            this.textClasser.ScrollToEnd();
+
+                        }));
+                      
+                    }*/
+                    //Console.WriteLine(msg);
+                    //Console.WriteLine("[{0}]", string.Join(", ", cs));
+
+                    Thread.Sleep(5000);
+                   
+                }
+
+            }
+
+
+        }
+
+       
 
         private void playSelectLines() {
             if (xdisplay.Count <= 0 && x.Count <= 0)
@@ -1610,9 +1710,11 @@ namespace wtf
                     }
                 }
             }
-        
-            
-            
+
+
+            if (textOut.LineCount > 1000) {
+                textOut.Clear();
+            }
            
 
             
@@ -1641,6 +1743,7 @@ namespace wtf
                         }
 
                         wavePlotWindow.plt.PlotSignal(ydisplay.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
+                        
                         if (freqflag)
                         {
 
@@ -1655,6 +1758,86 @@ namespace wtf
                             Double[] usedata = computeFFT(ds);
 
                             List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+
+                            if (computeFlag)
+                            {
+                                /////////////////////////////////////////////////////////////////////////////////
+                                double max1 = lis.Max();
+                                int index1 = lis.IndexOf(max1);
+
+                                List<Double> left = lis.GetRange(0, index1 - 5000);
+                                List<Double> right = lis.GetRange(index1 + 5000, lis.Count - index1 - 5000);
+
+                                double max_left = left.Max();
+                                double max_right = right.Max();
+                                int index2 = 0;
+
+                                if (max_left > max_right)
+                                {
+                                    index2 = left.IndexOf(max_left);
+                                }
+                                else
+                                {
+                                    index2 = right.IndexOf(max_right) + index1 + 5000;
+                                }
+
+                          
+
+                                List<Double> f1 = lis.GetRange(index1 - 5000, 10000);
+                                List<Double> f2;
+
+                                if (max_left <= 100 && max_right <= 100)
+                                {
+
+                                    double p1 = computeRatio(index1 + 150000);
+
+                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
+                                    textOut.ScrollToEnd();
+
+                                    f2 = f1;
+                                }
+                                else
+                                {
+                                    double p1 = computeRatio(index1 + 150000);
+                                    double p2 = computeRatio(index2 + 150000);
+                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
+                                    textOut.ScrollToEnd();
+                                    f2 =  lis.GetRange(index2 - 5000, 10000);
+                                }
+
+                                /*StringBuilder builder = new StringBuilder();
+                                foreach(Double o in f1)
+                                {
+                                    builder.Append(o.ToString() + ",");
+                                }
+                                accessor1.WriteArray<char>(0, builder.ToString().ToArray(), 0, builder.Length);*/
+
+                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp.csv"))
+                                {
+
+                                    for (int s = 0; s < f1.Count; s++)
+                                    {
+                                        sw.Write(f1.ElementAt(s).ToString() + ",");
+
+                                    }
+
+
+                                }
+                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp1.csv"))
+                                {
+
+                                    for (int s = 0; s < f2.Count; s++)
+                                    {
+                                        sw.Write(f2.ElementAt(s).ToString() + ",");
+
+                                    }
+
+
+                                }
+
+
+                            }
+                            ////////////////////////////////////////////////////////////////////////////////////////////
 
 
                             UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
@@ -1819,6 +2002,7 @@ namespace wtf
                         }
 
                         wavePlotWindow.plt.PlotSignal(y.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
+                        
                         if (freqflag)
                         {
 
@@ -1831,6 +2015,88 @@ namespace wtf
 
                             Double[] usedata = computeFFT(ds);
                             List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+                            if (computeFlag)
+                            {
+
+                                /////////////////////////////////////////////////////////////////////////////////
+                                double max1 = lis.Max();
+                                int index1 = lis.IndexOf(max1);
+
+                                List<Double> left = lis.GetRange(0, index1 - 5000);
+                                List<Double> right = lis.GetRange(index1 + 5000, lis.Count - index1 - 5000);
+
+                                double max_left = left.Max();
+                                double max_right = right.Max();
+                                int index2 = 0;
+
+                                if (max_left > max_right)
+                                {
+                                    index2 = left.IndexOf(max_left);
+                                }
+                                else
+                                {
+                                    index2 = right.IndexOf(max_right) + index1 + 5000;
+                                }
+
+                                List<Double> f1 = lis.GetRange(index1 - 5000, 10000);
+                                List<Double> f2;
+
+                                //accessor1.WriteArray<Double>(0, f1.ToArray(), 0, f1.Count);
+
+                                if (max_left <= 100 && max_right <= 100)
+                                {
+
+                                    double p1 = computeRatio(index1 + 150000);
+
+                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
+                                    textOut.ScrollToEnd();
+
+
+                                    f2 = f1;
+                                }
+                                else
+                                {
+                                    double p1 = computeRatio(index1 + 150000);
+                                    double p2 = computeRatio(index2 + 150000);
+                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
+                                    textOut.ScrollToEnd();
+                                    f2 = lis.GetRange(index2 - 5000, 10000); 
+                                }
+
+                                /*StringBuilder builder = new StringBuilder();
+                                foreach (Double o in f1)
+                                {
+                                    builder.Append(o.ToString() + ",");
+                                }
+                                accessor1.WriteArray<char>(0, builder.ToString().ToArray(), 0, builder.Length);*/
+
+                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp.csv"))
+                                {
+
+                                    for (int s = 0; s < f1.Count; s++)
+                                    {
+                                        sw.Write(f1.ElementAt(s).ToString() + ",");
+
+                                    }
+
+
+                                }
+                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp1.csv"))
+                                {
+
+                                    for (int s = 0; s < f2.Count; s++)
+                                    {
+                                        sw.Write(f2.ElementAt(s).ToString() + ",");
+
+                                    }
+
+
+                                }
+
+                            }
+                            ////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
                             UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
                             
@@ -1968,8 +2234,14 @@ namespace wtf
                
             }
 
+            if (classer[0] != 0 && classer[1] != 0) {
+                heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源" + "--" + "低峰:" + classer[1] + "号电源",fontSize:24);
+            
+            }
+
             wavePlotWindow.plt.Legend();
             heatPlotWindow.plt.Legend();
+            
             wavePlotWindow.Render();
             heatPlotWindow.Render();
             
@@ -1988,6 +2260,7 @@ namespace wtf
         {
             freqflag = false;
             dwtflag = false;
+            computeFlag = false;
             computeHigh = false;
         }
 
@@ -1997,6 +2270,7 @@ namespace wtf
             if (freqflag == false)
             {
                 freqflag = true;
+                new Thread(new ThreadStart(getClasserOut)).Start();
             }
             else
             {
@@ -2060,9 +2334,10 @@ namespace wtf
             else {
                 csvSave = false;
             }
-          
-        
         }
+
+
+
         private void timeOutSave_Click(object sender, RoutedEventArgs e)
         {
             Button btn = (Button)sender;
@@ -2072,9 +2347,23 @@ namespace wtf
             UserDef.flagRecord = true;
         }
 
+        private bool computeFlag = false;
+
         private void button_Click(object sender, RoutedEventArgs e)
         {
-           
+            if (freqflag == true) {
+
+                if (computeFlag == false) {
+
+                    computeFlag = true;
+
+                }
+                else
+                {
+                    computeFlag = false;
+                }
+            
+            }
         }
 
         private void button1_Click(object sender, RoutedEventArgs e)
@@ -2282,7 +2571,7 @@ namespace wtf
                     UserDef.xToSave.Add(UserDef.NowRes);
                 }
                 } catch (Exception) { }
-           
+            
             Thread.Sleep(500);
             Send("OK");
 

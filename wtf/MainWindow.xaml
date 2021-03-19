@@ -56,27 +56,30 @@
         <Button x:Name="lastPageButton" Content="上一页" HorizontalAlignment="Left" Margin="10,361,0,0" VerticalAlignment="Top" Width="51" Click="lastPageButton_Click" Height="18" RenderTransformOrigin="-0.353,2.056"/>
         <Button x:Name="nextPageButton" Content="下一页" HorizontalAlignment="Left" Margin="139,361,0,0" VerticalAlignment="Top" Width="51" Click="nextPageButton_Click" Height="18" RenderTransformOrigin="-0.86,0.556"/>
         <Label x:Name="pageLabel" Content="页数" HorizontalAlignment="Left" Margin="94,357,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.013,-0.879" Width="64" Height="37"/>
-        <TextBox x:Name="tb_comment" Grid.Column="2" HorizontalAlignment="Left" Height="43" Margin="522,10,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="198" RenderTransformOrigin="0.404,-0.239" />
+        <TextBox x:Name="tb_comment" Grid.Column="2" Visibility="Hidden" HorizontalAlignment="Left" Height="43" Margin="522,10,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="198" RenderTransformOrigin="0.404,-0.239" />
         <TextBox x:Name="tb_sampleRate" Grid.Column="2" HorizontalAlignment="Left" Height="23" Margin="738,5,0,0" Grid.Row="1" TextWrapping="Wrap" Text="100" VerticalAlignment="Top" Width="74" RenderTransformOrigin="0.967,0.348" TextChanged="tb_sampleRate_TextChanged" Visibility="Hidden"/>
         <TextBox x:Name="tb_cutoff" Grid.Column="2" HorizontalAlignment="Left" Height="23" Margin="739,30,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0.007" VerticalAlignment="Top" Width="75" TextChanged="tb_cutoff_TextChanged" Visibility="Hidden"/>
-        <CheckBox x:Name="cb_lowpassFilter" Content="低通滤波"  Grid.Column="2" HorizontalAlignment="Left" Margin="739,60,0,0" Grid.Row="1" VerticalAlignment="Top"/>
+        <CheckBox x:Name="cb_lowpassFilter" Content="低通滤波" Visibility="Hidden"  Grid.Column="2" HorizontalAlignment="Left" Margin="739,60,0,0" Grid.Row="1" VerticalAlignment="Top"/>
         <TextBox x:Name="tb_startTime"  HorizontalAlignment="Left"  Height="23" Margin="7,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="54"  MouseLeave="tb_startTime_TextChanged" LostFocus="tb_startTime_LostFocus"/>
         <TextBox x:Name="tb_stepTime" HorizontalAlignment="Left" Height="23" Margin="72,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="56" RenderTransformOrigin="0.75,0.391"  MouseLeave="tb_stepTime_TextChanged" LostFocus="tb_stepTime_LostFocus"/>
         <TextBox x:Name="tb_endTime" HorizontalAlignment="Left" Height="23" Margin="140,51,0,0" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50" RenderTransformOrigin="0.75,0.391" MouseLeave="tb_endTime_TextChanged" LostFocus="tb_endTime_LostFocus"/>
         <Button x:Name="bt_save_all_mat" Content="保存原始数据" Grid.Column="2" HorizontalAlignment="Left" Margin="374,11,0,89" Grid.Row="1" Width="82" RenderTransformOrigin="0.687,-0.184" Click="bt_save_all_mat_Click"/>
-        <Button x:Name="bt_display_mode" Content="频谱图" Grid.Column="2" HorizontalAlignment="Left" Margin="164,12,0,103" Width="52" Click="bt_display_mode_Click" Grid.Row="1" RenderTransformOrigin="-0.019,1.435"/>
+        <Button x:Name="bt_display_mode" Content="频谱图" Grid.Column="2" HorizontalAlignment="Left" Margin="164,7,0,108" Width="74" Click="bt_display_mode_Click" Grid.Row="1" RenderTransformOrigin="-0.019,1.435"/>
         <CheckBox x:Name="cb_Check_All" Content="全不选" Grid.Column="2" HorizontalAlignment="Left" Margin="10,35,0,0" Grid.Row="1" VerticalAlignment="Top" Click="cb_Check_All_Click"  />
         <CheckBox x:Name="cb_method_static" Content="统计法" HorizontalAlignment="Left" Margin="0,0,0,165" VerticalAlignment="Bottom" RenderTransformOrigin="-8.515,-13.533" Click="cb_method_static_Click" Visibility="Hidden"/>
         <Button x:Name="timeOutSave" Content="定时存储" HorizontalAlignment="Left" Margin="10,596,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="-0.605,0.737" Click="timeOutSave_Click"/>
-        <Button x:Name="button" Content="计算" HorizontalAlignment="Left" Margin="10,693,0,0" VerticalAlignment="Top" Width="110" RenderTransformOrigin="-0.25,0.368" Click="button_Click"/>
+        <Button x:Name="button" Content="计算与分析" HorizontalAlignment="Left" Margin="272,94,0,0" VerticalAlignment="Top" Width="83" RenderTransformOrigin="-0.25,0.368" Click="button_Click" Grid.Column="2" Grid.Row="1"/>
         <CheckBox x:Name="csvcheck" Content="CSV格式数据" HorizontalAlignment="Left" Margin="10,630,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.684,0.233" Checked="csv_Ckeck" Unchecked="csv_Ckeck"/>
-        <Button x:Name="button1" Content="小波分解&#xD;&#xA;" Grid.Column="2" HorizontalAlignment="Left" Margin="164,60,0,-9" Grid.Row="1" VerticalAlignment="Top" Width="76" Height="24" Click="button1_Click" RenderTransformOrigin="0.059,2.771"/>
-        <Button x:Name="button2" Content="最高频点" Grid.Column="2" HorizontalAlignment="Left" Margin="164,89,0,-29" Grid.Row="1" VerticalAlignment="Top" Width="76" RenderTransformOrigin="-1.02,-1.158" Click="button2_Click"/>
-        <Button x:Name="button3" Content="频谱相关系数" Grid.Column="2" HorizontalAlignment="Left" Margin="164,113,0,-35" Grid.Row="1" VerticalAlignment="Top" Width="74" RenderTransformOrigin="0.034,-1.211"/>
-        <TextBox x:Name="textBox" Grid.Column="2" HorizontalAlignment="Left" Height="23" Margin="374,119,0,-45" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="120"/>
-        <Label x:Name="label" Content="频段" Grid.Column="2" HorizontalAlignment="Left" Margin="314,117,0,-20" Grid.Row="1" VerticalAlignment="Top"/>
-        <Button x:Name="button4" Content="最高频点幅值" Grid.Column="2" HorizontalAlignment="Left" Margin="164,142,0,-19" Grid.Row="1" VerticalAlignment="Top" Width="76" Click="button4_Click"/>
+        <Button x:Name="button1" Content="小波分解&#xD;&#xA;" Grid.Column="2" HorizontalAlignment="Left" Margin="272,11,0,0" Grid.Row="1" VerticalAlignment="Top" Width="76" Height="24" Click="button1_Click" RenderTransformOrigin="0.059,2.771"/>
+        <Button x:Name="button2" Content="最高频点" Grid.Column="2" HorizontalAlignment="Left" Margin="164,52,0,0" Grid.Row="1" VerticalAlignment="Top" Width="76" RenderTransformOrigin="-1.02,-1.158" Click="button2_Click"/>
+        <Button x:Name="button3" Content="频谱相关系数" Grid.Column="2" HorizontalAlignment="Left" Margin="272,55,0,0" Grid.Row="1" VerticalAlignment="Top" Width="74" RenderTransformOrigin="0.034,-1.211"/>
+        <TextBox x:Name="textBox" Grid.Column="2" HorizontalAlignment="Left" Height="23" Margin="203,152,0,-33" Grid.Row="1" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="120"/>
+        <Label x:Name="label" Content="频段" Grid.Column="2" HorizontalAlignment="Left" Margin="164,152,0,-35" Grid.Row="1" VerticalAlignment="Top" RenderTransformOrigin="-3.809,1.84"/>
+        <Button x:Name="button4" Content="最高频点幅值" Grid.Column="2" HorizontalAlignment="Left" Margin="164,94,0,0" Grid.Row="1" VerticalAlignment="Top" Width="76" Click="button4_Click"/>
         <Button x:Name="button5" Content="保存特征" Grid.Column="2" HorizontalAlignment="Left" Margin="374,75,0,0" Grid.Row="1" VerticalAlignment="Top" Width="82" Height="33" Click="button5_Click"/>
+        <TextBox x:Name="textOut" Grid.Column="2" HorizontalAlignment="Left" Height="43" Margin="495,49,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="184"/>
+        <Label x:Name="label1" Content="功率分配" Grid.Column="2" HorizontalAlignment="Left" Margin="495,13,0,0" Grid.Row="1" VerticalAlignment="Top" Width="104"/>
+        <TextBox x:Name="textClasser" Grid.Column="2"  HorizontalAlignment="Left" Height="53" Margin="495,122,0,-33" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="198"/>
 
     </Grid>
 </Window>
