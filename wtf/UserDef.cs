@@ -16,13 +16,10 @@ namespace wtf
         public static int signalFrequency = 250; // 信号频率
         public static double tolerance = 0.03; // 信号频率
         public const String PathDir = @"D:\TestDataFile\";
-        public static List<List<Double>> dataToSave =  new List<List<Double>>() { new List<double>(), new List<double>(), new List<double>(), new List<double>(),
+        public static List<List<Double>> dataToSave = new List<List<Double>>() { new List<double>(), new List<double>(), new List<double>(), new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>()};
-
- 
-
 
         public static List<List<Double>> dataCompute = new List<List<Double>>() { new List<double>(), new List<double>(), new List<double>(), new List<double>(),
         new List<double>(), new List<double>(), new List<double>() , new List<double>(),

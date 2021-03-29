@@ -283,7 +283,7 @@ namespace wtf
         private static UserDef.CFGPARA cfgPara;
         private static bool needStop = false;
 
-        static UInt16[,] k_buffer = new UInt16[2, 8000100];
+        //static UInt16[,] k_buffer = new UInt16[2, 8000100];
         static UInt32 k_length = 0;
         static DateTime k_lastSavedFileTime = DateTime.Now;
         static UInt16 k_last_pattern_check = 0;
@@ -317,7 +317,7 @@ namespace wtf
             
         }
 
-        static void saveFile()
+       /* static void saveFile()
         {
 
             mstd("2991A is writting");
@@ -345,7 +345,7 @@ namespace wtf
 
             }
 
-        }
+        }*/
 
      
         public static UInt64 currentFrameCount = 0;
@@ -462,7 +462,7 @@ namespace wtf
             for (nIndex = 0; nIndex < 16; nIndex++)
             {
                 cfgPara.AAIParam.CHParam[nIndex].bChannelEn = 1;
-                cfgPara.AAIParam.CHParam[nIndex].nSampleRange = NET2991A.NET2991A_AI_SAMPRANGE_N10_P10V;
+                cfgPara.AAIParam.CHParam[nIndex].nSampleRange = NET2991A.NET2991A_AI_SAMPRANGE_N5_P5V;
                 cfgPara.AAIParam.CHParam[nIndex].nRefGround = NET2991A.NET2991A_AI_REFGND_RSE;
             }
 

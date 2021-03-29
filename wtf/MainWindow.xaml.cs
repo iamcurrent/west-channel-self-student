@@ -37,6 +37,7 @@ using Neuronic.TimeFrequency.Kernels;
 using Neuronic.TimeFrequency.Transforms;
 using Neuronic.TimeFrequency.Wavelets;
 using System.IO.MemoryMappedFiles;
+using RabbitMQ.Client;
 
 namespace wtf
 {
@@ -63,26 +64,36 @@ namespace wtf
         MLApp.MLApp matlab = null;
        
         private WebSocketServer webSocketServer;
-       /* MemoryMappedFile memoryFile = null;
-        MemoryMappedViewAccessor accessor1;
-        long capacity = 1 << 10 << 10;*/
 
+        ConnectionFactory connectionFactory = null;
+        IConnection connection = null;
+        IModel channel = null;
+        /* MemoryMappedFile memoryFile = null;
+         MemoryMappedViewAccessor accessor1;
+         long capacity = 1 << 10 << 10;*/
+       
         //private static volatile List<List<Double>> dataToSave = new List<List<Double>>();
         public MainWindow()
         {
             InitializeComponent();
-           /* try
-            {
-                memoryFile = MemoryMappedFile.CreateOrOpen("MMAPF", capacity, MemoryMappedFileAccess.ReadWrite);
-                accessor1 = memoryFile.CreateViewAccessor(0, capacity);
-                
-            }
-            catch (Exception e)
-            {
-                
-            }*/
 
-            Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
+            //Console.WriteLine(list.Capacity);
+
+            connectionFactory = new ConnectionFactory();
+            connectionFactory.HostName = "localhost";
+            connectionFactory.UserName = "admin";
+            connectionFactory.Password = "admin";
+            connectionFactory.VirtualHost = "/";//默认情况可省略此行
+            connectionFactory.Port = 5672;
+            connection = connectionFactory.CreateConnection();
+            channel = connection.CreateModel();
+            //channel.QueueDeclare("SwapScope", true, false, true, null);
+            memoryMappedFile = MemoryMappedFile.CreateOrOpen("testMmf", capacity, MemoryMappedFileAccess.ReadWrite);
+            
+                //通过MemoryMappedFile的CreateViewAccssor方法获得共享内存的访问器
+            ViewAccessor = memoryMappedFile.CreateViewAccessor(0, capacity);
+
+                Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
             matlab = System.Activator.CreateInstance(matlabAppType) as MLApp.MLApp;
             string path_project = System.IO.Directory.GetCurrentDirectory();
             string path_matlabwork = "cd('"+ path_project +"')";
@@ -92,53 +103,7 @@ namespace wtf
             webSocketServer.AddWebSocketService<socketHander>("/");
             webSocketServer.Start();
             
-            /*string init2991Values = ConfigurationManager.AppSettings["maxth9001"];
-            if(init2991Values == null)
-            {
-                init2991Values = "";
-            }
-            string[] init2991v = init2991Values.Split(',');
 
-            string initValuesStr = ConfigurationManager.AppSettings["threaholdValues"];
-            int[] initValues = new int[65];
-            if (initValuesStr == null)
-            {
-                initValuesStr = "";
-            } 
-            string[] splitArr = initValuesStr.Split(',');
-            try
-            {
-                for (int i = 0; i < 16; i++)
-                {
-                    initValues[i*4] = splitArr.Length > 63 ? Convert.ToInt32(splitArr[i*4]) : 33000;
-                    initValues[i*4 + 1] = splitArr.Length > 63 ? Convert.ToInt32(splitArr[i*4 + 1]) : 31000;
-                    initValues[i*4 + 2] = splitArr.Length > 63 ? Convert.ToInt32(splitArr[i*4 + 2]) : 33000;
-                    initValues[i*4 + 3] = splitArr.Length > 63 ? Convert.ToInt32(splitArr[i*4 + 3]) : 31000;
-                }
-            } catch(Exception e)
-            {
-
-            }
-            
-
-
-            if (d2991A.Count <= 0)
-            {
-                for (int i = 0; i < 16; i++)
-                {
-                   
-                    UserDef.d2991A.Add(new channleSetting()
-                    {
-                        no = i,
-                        max = 0,
-                        max_th = initValues[i*4],
-                        min_th = initValues[i*4+1]
-
-                    });
-                }
-            }*/
-            //dg_2991.ItemsSource =UserDef.d2991;
-            //dg_9003.ItemsSource = UserDef.d9003;
             for (int i = 0; i < 16; i++)
             {
                 CheckBox tmp = new CheckBox();
@@ -149,6 +114,7 @@ namespace wtf
                 tmp.Width = 80;
                 tmp.Margin = new Thickness(5, 10, 5, 10);
                 tmp.Content = "通道" + i;
+             
                 if (i < 8)
                 {
                     upStackPannel.Children.Add(tmp);
@@ -164,29 +130,18 @@ namespace wtf
               
                 peaks.Add(m);
             }
-           // tb_sampleRate.Text = UserDef.Frequency.ToString();
-            /*Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
-            matlab = System.Activator.CreateInstance(matlabAppType) as MLApp.MLApp;
-            string path_project = System.IO.Directory.GetCurrentDirectory();
-            //string path_matlab = "cd('C:\\Users\\wuxji\\CloudStation\\Drive\\works\\UESTC\\测厚仪\\2020\\dataprocess')";
-            string path_matlab = "cd('C:\\ART\\west_tubecopy\\wtf')";
-            matlab.Execute(path_matlab);
-            matlab.Execute("clear all");
-            matlab.Visible = 1;*/
-
-            /*for (int i = 0; i <= xInteval; i++)
-                heatMapX[i] = i*10;*/
-
-            /*for (int j = 0; j < 16 * 4; j++)
-                heatMapY[j] = j;*/
+        
             heatPlotWindow.plt.Title("频谱图");
             heatPlotWindow.plt.XLabel("频率(Hz)");
-            heatPlotWindow.plt.YLabel("通道");
+            heatPlotWindow.plt.YLabel("幅值");
             heatPlotWindow.plt.Ticks(numericFormatStringX: "F2");
 
             wavePlotWindow.plt.Title("实时波形");
             wavePlotWindow.plt.XLabel("时间(s)");
             wavePlotWindow.plt.YLabel("通道");
+
+            
+
         }
 
        
@@ -320,7 +275,7 @@ namespace wtf
 
         //计算统计量
         private void showStatistics(object o) {
-            UserDef.timeOut = false;
+           /* UserDef.timeOut = false;
             //String filePath =  "compute"+ DateTime.Now.ToString("MM-dd-H-mm-ss_")+".txt";
             for (int i = 0; i < channelNum.Count; i++) {
                 List<Double> list = UserDef.dataCompute.ElementAt(channelNum.ElementAt(i));
@@ -341,7 +296,7 @@ namespace wtf
             }
 
             UserDef.timeOut = true;
-        
+        */
         }
 
 
@@ -353,30 +308,31 @@ namespace wtf
             UserDef.flagRecord = false;
 
 
-            if (channelNum.Count!=0&& UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count != 0)
+            if (channelNum.Count != 0 && UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count != 0)
             {
 
                 int count = channelNum.Count;
                 int save_index = 0;
-               
+
 
                 double[,] matdata = new double[count + 1, UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count];
-                if (UserDef.xToSave.Count == 0) {
+                if (UserDef.xToSave.Count == 0)
+                {
 
                     for (int i = 0; i < UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count; i++)
                     {
-                       
+
                         matdata[save_index, i] = UserDef.NowRes;
                     }
 
                 }
 
-                 else  if (UserDef.xToSave.Count * (UserDef.Frequency/2) >= UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count)
+                else if (UserDef.xToSave.Count * (UserDef.Frequency / 2) >= UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count)
                 {
 
                     for (int i = 0; i < UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count; i++)
                     {
-                        int n = i / (UserDef.Frequency/2);
+                        int n = i / (UserDef.Frequency / 2);
                         matdata[save_index, i] = UserDef.xToSave.ElementAt(n);
                     }
 
@@ -384,17 +340,17 @@ namespace wtf
                 else
                 {
 
-                    for (int i = 0; i < UserDef.xToSave.Count * (UserDef.Frequency/2); i++)
+                    for (int i = 0; i < UserDef.xToSave.Count * (UserDef.Frequency / 2); i++)
                     {
-                        int n = i / (UserDef.Frequency/2);
+                        int n = i / (UserDef.Frequency / 2);
                         matdata[save_index, i] = UserDef.xToSave.ElementAt(n);
                     }
 
 
 
-                    for (int i = 0; i < UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count - UserDef.xToSave.Count * (UserDef.Frequency/2); i++)
+                    for (int i = 0; i < UserDef.dataToSave.ElementAt(channelNum.ElementAt(0)).Count - UserDef.xToSave.Count * (UserDef.Frequency / 2); i++)
                     {
-                        matdata[save_index, i + UserDef.xToSave.Count * (UserDef.Frequency/2)] = UserDef.xToSave.ElementAt(UserDef.xToSave.Count - 1);
+                        matdata[save_index, i + UserDef.xToSave.Count * (UserDef.Frequency / 2)] = UserDef.xToSave.ElementAt(UserDef.xToSave.Count - 1);
 
                     }
 
@@ -431,13 +387,16 @@ namespace wtf
 
 
                 Console.WriteLine(csvSave);
-                if (csvSave) {
+                if (csvSave)
+                {
                     StreamWriter swt = new StreamWriter("D:\\CSVData\\" + DateTime.Now.ToString("MM -dd-H-mm-ss_") + ".csv");
-                    for (int i = 0; i < matdata.GetLength(1); i++) {
-                        for (int j = 0; j < matdata.GetLength(0); j++) {
+                    for (int i = 0; i < matdata.GetLength(1); i++)
+                    {
+                        for (int j = 0; j < matdata.GetLength(0); j++)
+                        {
 
-                            swt.Write(matdata[j, i].ToString()+",");
-                        
+                            swt.Write(matdata[j, i].ToString() + ",");
+
                         }
 
                         swt.Write("\r\n");
@@ -445,8 +404,9 @@ namespace wtf
                     swt.Flush();
                     swt.Close();
                 }
-             
-                else {
+
+                else
+                {
                     Matrix<double> matrix = Matrix<double>.Build.DenseOfArray(matdata);
                     String path = "I:\\电源测试数据\\TimeOut\\" + DateTime.Now.ToString("MM-dd-H-mm-ss_") + ".mat";
                     MatlabWriter.Write(path, matrix, "data");
@@ -470,9 +430,10 @@ namespace wtf
         }
 
 
-      
+
         private void backgroundWorker_2991_doWork(object sender, DoWorkEventArgs e)
         {
+            
             try
             {
                 
@@ -548,8 +509,7 @@ namespace wtf
                             x.Clear();
                             Parallel.For(0, 16, (i) =>
                             {
-                                List<Double> y = data.ElementAt(i);
-                                y.Clear();
+                                data.ElementAt(i).Clear();
                                 lastDataCount[i] = 0;
                             });
                         }
@@ -571,10 +531,11 @@ namespace wtf
                                
                             }
 
-                            for (int k = 0; k < channelNum.Count; k++) {
+                            /*for (int k = 0; k < channelNum.Count; k++) {
                                 UserDef.freq.ElementAt(channelNum.ElementAt(k)).Clear();
                                 
                             }
+                            */
 
                             isSelectiongChanging = false;
 
@@ -607,21 +568,24 @@ namespace wtf
                              foreach (int n in channelNum)
                             {
                                // int n = channelNum.ElementAt(j);
-                                List<Double> y = data.ElementAt(n);      //当前的通道                        
+                                //List<Double> y = data.ElementAt(n);      //当前的通道                        
                                 //displayFrame 是需要展示的数据帧
                                 temp_value = ((NET2991A.buffer[displayFrame, n, i] - 32768) * NET2991A.fPerLsb / 1000);
-                                y.Add(temp_value + 0.3 * yindex);
-                                if (UserDef.flagRecord && UserDef.NowRes!=0) {
-                                    
-                                    UserDef.dataToSave.ElementAt(n).Add(temp_value);
-                                   
-                                }
-                                if (UserDef.timeOut) {
-                                    UserDef.dataCompute.ElementAt(n).Add(temp_value);
-                                
-                                }
+                               // y.Add(temp_value + 0.3 * yindex);
+                                data.ElementAt(n).Add(temp_value+0.3 * yindex);
+                               /* if (UserDef.flagRecord && UserDef.NowRes != 0)
+                                {
 
-                                
+                                    UserDef.dataToSave.ElementAt(n).Add(temp_value);
+
+                                }
+                                if (UserDef.timeOut)
+                                {
+                                    UserDef.dataCompute.ElementAt(n).Add(temp_value);
+
+                                }*/
+
+
                                 yindex++;
                             }
 
@@ -629,18 +593,7 @@ namespace wtf
 
                             count++;
                         }
-                       /* if (channelNum.Count > 0)
-                        {
-                            List<Double> ym = data.ElementAt(channelNum.ElementAt(0));
-                            if (ym.Count > 0)
-                            {
-                                for (int i = 0; i < 10; i++)
-                                {
-                                    Console.WriteLine("first elelment:" + i + ":" + ym.ElementAt(i));
-                                }
-
-                            }
-                        }*/
+                     
                         
                         // yindex = 0;
                         isChangeData = false;
@@ -648,20 +601,23 @@ namespace wtf
                         {
                             //displayLines();
                             playSelectLines();
-                          
+
                         }));
 
-                        
+
 
                         // Define the output 
-                        
 
-                       
 
-                        
+
                         currentCount = NET2991A.currentFrameCount;
                     }
+
+
                 }
+
+                
+
             }
             catch (Exception ex)
             {
@@ -868,8 +824,8 @@ namespace wtf
             Parallel.For(0, 16, (i) =>
             {
                 List<Double> y = data.ElementAt(i);
-                List<Double> y1 = UserDef.freq.ElementAt(i);
-                y1.Clear();
+                //List<Double> y1 = UserDef.freq.ElementAt(i);
+                //y1.Clear();
                 y.Clear();
                 lastDataCount[i] = 0;
             });
@@ -1427,13 +1383,13 @@ namespace wtf
             if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) {
 
                 String fileName = saveFileDialog.FileName;
-                double[,] matdata = new double[channelNum.Count + 1, x.Count];
+                double[,] matdata = new double[channelNum.Count, data.ElementAt(channelNum.ElementAt(0)).Count];
                
-                for (var i = 0; i < x.Count; i++)
+                /*for (var i = 0; i < x.Count; i++)
                 {
                     matdata[0, i] = x.ElementAt(i);
-                }
-                int save_index = 1;
+                }*/
+                int save_index = 0;
                 for (int i = 0; i < channelNum.Count; i++) {
                     for (int j = 0; j < data.ElementAt(channelNum.ElementAt(i)).Count; j++) {
 
@@ -1561,7 +1517,7 @@ namespace wtf
         //计算fft
         private Double[] computeFFT(Double [] data) {
             object result = null;
-            
+           
             matlab.Feval("FFT", 1, out result, data);
             object[] res = result as object[];
             double[,] resdata = res[0] as double[,];
@@ -1598,7 +1554,9 @@ namespace wtf
 
         private delegate void FlushClient();
         private static char[] classer = new char[2];
-
+        private MemoryMappedFile memoryMappedFile=null;
+        private MemoryMappedViewAccessor  ViewAccessor= null;
+        private long capacity = 1 << 10 << 10;
         //获取分类的结果
         private void getClasserOut()
         {
@@ -1607,18 +1565,15 @@ namespace wtf
             long capacity = 1 << 10 << 10;
 
             //创建或者打开共享内存
-            using (var mmf = MemoryMappedFile.CreateOrOpen("testMmf", capacity, MemoryMappedFileAccess.ReadWrite))
-            {
-                //通过MemoryMappedFile的CreateViewAccssor方法获得共享内存的访问器
-                var viewAccessor = mmf.CreateViewAccessor(0, capacity);
+         
                 //循环写入，使在这个进程中可以向共享内存中写入不同的字符串值
                 while (freqflag)
                 {
                  
-                    viewAccessor.Flush();
+                    ViewAccessor.Flush();
                     Byte[] charsInMMf = new Byte[2];
-                    //读取字符
-                    viewAccessor.ReadArray<Byte>(0, charsInMMf, 0, 2);
+                //读取字符
+                    ViewAccessor.ReadArray<Byte>(0, charsInMMf, 0, 2);
 
                     char[] cs = new char[2];
                     for (int i = 0; i < charsInMMf.Length; i++)
@@ -1656,12 +1611,17 @@ namespace wtf
                    
                 }
 
-            }
+            
 
 
         }
 
-       
+        private StringBuilder builder = new StringBuilder();
+        private int intervalTh = 5000; 
+        private List<Double> axis_f = new List<double>();
+        private double highPower = 0,lowPower = 0;
+
+
 
         private void playSelectLines() {
             if (xdisplay.Count <= 0 && x.Count <= 0)
@@ -1715,7 +1675,18 @@ namespace wtf
             if (textOut.LineCount > 1000) {
                 textOut.Clear();
             }
-           
+
+
+            try
+            {
+                intervalTh = Convert.ToInt32(textClasser.Text);
+
+            }
+            catch (Exception e) { 
+            
+            
+            }
+
 
             
             for (int i = 0; i < channelNum.Count; i++) {
@@ -1765,8 +1736,8 @@ namespace wtf
                                 double max1 = lis.Max();
                                 int index1 = lis.IndexOf(max1);
 
-                                List<Double> left = lis.GetRange(0, index1 - 5000);
-                                List<Double> right = lis.GetRange(index1 + 5000, lis.Count - index1 - 5000);
+                                List<Double> left = lis.GetRange(0, index1 - intervalTh);
+                                List<Double> right = lis.GetRange(index1 + intervalTh, lis.Count - index1 - intervalTh*4);
 
                                 double max_left = left.Max();
                                 double max_right = right.Max();
@@ -1778,62 +1749,105 @@ namespace wtf
                                 }
                                 else
                                 {
-                                    index2 = right.IndexOf(max_right) + index1 + 5000;
+                                    index2 = right.IndexOf(max_right) + index1 + intervalTh;
                                 }
-
-                          
-
-                                List<Double> f1 = lis.GetRange(index1 - 5000, 10000);
+                                List<Double> f1;//= lis.GetRange(index1 - 5000, 10000);
                                 List<Double> f2;
 
                                 if (max_left <= 100 && max_right <= 100)
                                 {
+                                    //double p1 = computeRatio(index1 + lowf);
+                                    highPower = computeRatio(index1 + lowf);
+                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
+                                    textOut.ScrollToEnd();*/
+                                    f1 = lis.GetRange(index1 - 5000, 10000);
+                                    //f2 = f1;
+                                    builder.Clear();
+                                    for (int ns = 0; ns < 2 * f1.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f1.ElementAt(ns % f1.Count), 2).ToString() + ",");
 
-                                    double p1 = computeRatio(index1 + 150000);
+                                    }
+                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
 
-                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
-                                    textOut.ScrollToEnd();
+                                }
 
-                                    f2 = f1;
+                                else
+                                {
+
+                                    if (index1 < index2 && index1 + 5000 > index2)
+                                    {
+                                        f1 = lis.GetRange(index1 - 5000, (int)((index2 - index1) / 2));
+                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                                        {
+                                            f1.Add(0);
+                                        }
+
+                                        f2 = lis.GetRange(index2 - (int)((index2 - index1) / 2), 5000 + (int)((index2 - index1) / 2));
+
+                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                                        {
+
+                                            f2.Insert(0, 0);
+                                        }
+
+
+                                    }
+                                    else if (index1 > index2 && index1 - 5000 < index2)
+                                    {
+                                        f1 = lis.GetRange(index1 - (int)((index1 - index2) / 2), 5000 + (int)((index1 - index2) / 2));
+                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                                        {
+
+                                            f1.Insert(0, 0);
+                                        }
+
+                                        f2 = lis.GetRange(index2 - 5000, (int)((index1 - index2) / 2)+5000);
+                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                                        {
+                                            f2.Add(0);
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        f1 = lis.GetRange(index1 - 5000, 10000);
+                                        f2 = lis.GetRange(index2 - 5000, 10000);
+                                    }
+
+
+                                    highPower = computeRatio(index1 + lowf);
+                                    lowPower = computeRatio(index2 + lowf);
+                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
+                                    textOut.ScrollToEnd();*/
+
+                                    builder.Clear();
+                                    for (int ns = 0; ns < f1.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f1.ElementAt(ns), 2).ToString() + ",");
+                                    }
+                                    for (int ns = 0; ns < f2.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f2.ElementAt(ns), 2).ToString() + ",");
+                                    }
+
+                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+
+
+                                }
+
+
+                                if (classer[0] != 0 && classer[1] != 0)
+                                {
+                                    heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:" + highPower + "--" + "低峰:" + classer[1] + "号电源,功率:" + lowPower, fontSize: 20);
+
                                 }
                                 else
                                 {
-                                    double p1 = computeRatio(index1 + 150000);
-                                    double p2 = computeRatio(index2 + 150000);
-                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
-                                    textOut.ScrollToEnd();
-                                    f2 =  lis.GetRange(index2 - 5000, 10000);
+                                    heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
                                 }
 
-                                /*StringBuilder builder = new StringBuilder();
-                                foreach(Double o in f1)
-                                {
-                                    builder.Append(o.ToString() + ",");
-                                }
-                                accessor1.WriteArray<char>(0, builder.ToString().ToArray(), 0, builder.Length);*/
 
-                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp.csv"))
-                                {
-
-                                    for (int s = 0; s < f1.Count; s++)
-                                    {
-                                        sw.Write(f1.ElementAt(s).ToString() + ",");
-
-                                    }
-
-
-                                }
-                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp1.csv"))
-                                {
-
-                                    for (int s = 0; s < f2.Count; s++)
-                                    {
-                                        sw.Write(f2.ElementAt(s).ToString() + ",");
-
-                                    }
-
-
-                                }
 
 
                             }
@@ -1842,7 +1856,8 @@ namespace wtf
 
                             UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
 
-                            for (int c = 0; c < lis.Count; c++) {
+                            for (int c = 0; c < lis.Count; c++)
+                            {
                                 if (channelNum.ElementAt(i) == 12)
                                 {
                                     lis[c] = lis[c] + i;
@@ -1856,8 +1871,14 @@ namespace wtf
                             }
 
                             //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                            heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            axis_f.Clear();
+                            for (int ns = 0; ns < lis.Count; ns++)
+                            {
+                                axis_f.Add(ns + lowf);
+                            }
 
+                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
                         } else if (computeHigh) {
 
                             if (channelNum.ElementAt(i) == 15)
@@ -1963,7 +1984,8 @@ namespace wtf
                             List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
                             double max = lis.Max();
                             UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Add(max);
-                            if (UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Count > 2000) {
+                            if (UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Count > 2000)
+                            {
                                 UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
                             }
                             heatPlotWindow.plt.PlotSignal(MAXVALUE.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
@@ -2022,8 +2044,8 @@ namespace wtf
                                 double max1 = lis.Max();
                                 int index1 = lis.IndexOf(max1);
 
-                                List<Double> left = lis.GetRange(0, index1 - 5000);
-                                List<Double> right = lis.GetRange(index1 + 5000, lis.Count - index1 - 5000);
+                                List<Double> left = lis.GetRange(0, index1 - intervalTh);
+                                List<Double> right = lis.GetRange(index1 + intervalTh, lis.Count - index1 - intervalTh*4);
 
                                 double max_left = left.Max();
                                 double max_right = right.Max();
@@ -2038,60 +2060,103 @@ namespace wtf
                                     index2 = right.IndexOf(max_right) + index1 + 5000;
                                 }
 
-                                List<Double> f1 = lis.GetRange(index1 - 5000, 10000);
-                                List<Double> f2;
 
-                                //accessor1.WriteArray<Double>(0, f1.ToArray(), 0, f1.Count);
+                                List<Double> f1;//= lis.GetRange(index1 - 5000, 10000);
+                                List<Double> f2;
 
                                 if (max_left <= 100 && max_right <= 100)
                                 {
+                                    highPower = computeRatio(index1 + lowf);
 
-                                    double p1 = computeRatio(index1 + 150000);
+                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
+                                    textOut.ScrollToEnd();*/
+                                    f1 = lis.GetRange(index1 - 5000, 10000);
+                                    //f2 = f1;
+                                    builder.Clear();
+                                    for (int ns = 0; ns < 2 * f1.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f1.ElementAt(ns % f1.Count), 2).ToString() + ",");
 
-                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
-                                    textOut.ScrollToEnd();
+                                    }
+                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+
+                                }
+
+                                else
+                                {
+
+                                    if (index1 < index2 && index1 + 5000 > index2)
+                                    {
+                                        f1 = lis.GetRange(index1 - 5000, (int)((index2 - index1) / 2));
+                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                                        {
+                                            f1.Add(0);
+                                        }
+
+                                        f2 = lis.GetRange(index2 - (int)((index2 - index1) / 2), 5000 + (int)((index2 - index1) / 2));
+
+                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                                        {
+
+                                            f2.Insert(0, 0);
+                                        }
 
 
-                                    f2 = f1;
+                                    }
+                                    else if (index1 > index2 && index1 - 5000 < index2)
+                                    {
+                                        f1 = lis.GetRange(index1 - (int)((index1 - index2) / 2), 5000 + (int)((index1 - index2) / 2));
+                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                                        {
+
+                                            f1.Insert(0, 0);
+                                        }
+
+                                        f2 = lis.GetRange(index2 - 5000, (int)((index1 - index2) / 2)+5000);
+                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                                        {
+                                            f2.Add(0);
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        f1 = lis.GetRange(index1 - 5000, 10000);
+                                        f2 = lis.GetRange(index2 - 5000, 10000);
+                                    }
+
+                                    highPower = computeRatio(index1 + lowf);
+                                    lowPower = computeRatio(index2 + lowf);
+                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
+                                    textOut.ScrollToEnd();*/
+
+                                    builder.Clear();
+                                    for (int ns = 0; ns < f1.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f1.ElementAt(ns), 2).ToString() + ",");
+                                    }
+                                    for (int ns = 0; ns < f2.Count; ns++)
+                                    {
+                                        builder.Append(Math.Round(f2.ElementAt(ns), 2).ToString() + ",");
+                                    }
+
+                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+
+
+                                }
+
+
+
+                                if (classer[0] != 0 && classer[1] != 0)
+                                {
+                                    heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:" + highPower + "--" + "低峰:" + classer[1] + "号电源,功率:" + lowPower, fontSize: 20);
+
                                 }
                                 else
                                 {
-                                    double p1 = computeRatio(index1 + 150000);
-                                    double p2 = computeRatio(index2 + 150000);
-                                    textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
-                                    textOut.ScrollToEnd();
-                                    f2 = lis.GetRange(index2 - 5000, 10000); 
+                                    heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
                                 }
 
-                                /*StringBuilder builder = new StringBuilder();
-                                foreach (Double o in f1)
-                                {
-                                    builder.Append(o.ToString() + ",");
-                                }
-                                accessor1.WriteArray<char>(0, builder.ToString().ToArray(), 0, builder.Length);*/
-
-                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp.csv"))
-                                {
-
-                                    for (int s = 0; s < f1.Count; s++)
-                                    {
-                                        sw.Write(f1.ElementAt(s).ToString() + ",");
-
-                                    }
-
-
-                                }
-                                using (StreamWriter sw = new StreamWriter("D:\\shared\\temp1.csv"))
-                                {
-
-                                    for (int s = 0; s < f2.Count; s++)
-                                    {
-                                        sw.Write(f2.ElementAt(s).ToString() + ",");
-
-                                    }
-
-
-                                }
 
                             }
                             ////////////////////////////////////////////////////////////////////////////////////////////
@@ -2099,7 +2164,7 @@ namespace wtf
 
 
                             UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
-                            
+
 
                             for (int c = 0; c < lis.Count; c++)
                             {
@@ -2116,8 +2181,15 @@ namespace wtf
 
                             }
                             //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                            heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            axis_f.Clear();
+                            for (int ns = 0; ns < lis.Count; ns++)
+                            {
+                                axis_f.Add(ns + lowf);
+                            }
 
+                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
 
                         } else if (computeHigh) {
 
@@ -2234,10 +2306,14 @@ namespace wtf
                
             }
 
-            if (classer[0] != 0 && classer[1] != 0) {
-                heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源" + "--" + "低峰:" + classer[1] + "号电源",fontSize:24);
-            
+            /*if (classer[0] != 0 && classer[1] != 0) {
+                heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:"+highPower + "--" + "低峰:" + classer[1] + "号电源,功率:"+lowPower,fontSize:20);
+
             }
+            else
+            {
+                heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
+            }*/
 
             wavePlotWindow.plt.Legend();
             heatPlotWindow.plt.Legend();
@@ -2449,7 +2525,7 @@ namespace wtf
                 }
             }
 
-            }
+        }
 
         private void lb_dataList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
