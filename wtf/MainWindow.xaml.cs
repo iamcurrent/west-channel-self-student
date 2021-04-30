@@ -38,6 +38,7 @@ using Neuronic.TimeFrequency.Transforms;
 using Neuronic.TimeFrequency.Wavelets;
 using System.IO.MemoryMappedFiles;
 using RabbitMQ.Client;
+using System.Diagnostics;
 
 namespace wtf
 {
@@ -62,12 +63,28 @@ namespace wtf
         private bool isSelectiongChanging = false;
         //SC300 motionPlatform = new SC300();
         MLApp.MLApp matlab = null;
-       
+
         private WebSocketServer webSocketServer;
 
         ConnectionFactory connectionFactory = null;
         IConnection connection = null;
         IModel channel = null;
+
+        public static Process p = null;
+        private static List<List<Double>> parameters = new List<List<Double>>() {
+            new List<double>(){-1.6114303731727691e-13, 8.995789942798905e-08, -0.017776192617190895, 1374.2099070543757 },
+            new List<double>() { -7.710499011023721e-10, - 0.000401885042517353, 152.19366498580783 },
+            new List<Double>() {1.6937729313837746e-09, -0.0014028515618654488, 253.99085582499248 },  //24.5
+            new List<Double>() {5.2e-09, -0.0028057469, 394.63929418733466 }, //24.4
+            new List<Double>() {4.1e-09, -0.0023502101, 347.382012835228 }, //24.3
+            new List<Double>() {2.8e-09, -0.0018277928, 293.1887642205437  },//24.2
+            new List<Double>() {2.5e-09, -0.0016901039, 278.921710740231 },//24.1
+            new List<Double>() {1.7e-09, -0.0013592452, 244.3985840598463 },//24
+            new List<Double>() {9e-10, -0.0010559414, 212.5323502410578 },//23.9
+            new List<Double>() {-8e-10, -0.0003374776, 137.4752573783787 },//23.8
+            new List<Double>() {-1.7e-09, 6.31297e-05, 95.44041392958543 },//23.7
+            new List<Double>() {-2.3e-09, 0.0003124412, 69.22205280574725 },//23.6
+            new List<Double>() {-2.4e-09, 0.0003349066, 66.65911661644182 }}; //23.5
         /* MemoryMappedFile memoryFile = null;
          MemoryMappedViewAccessor accessor1;
          long capacity = 1 << 10 << 10;*/
@@ -77,32 +94,38 @@ namespace wtf
         {
             InitializeComponent();
 
-            //Console.WriteLine(list.Capacity);
+            //连接消息队列
+            try
+            {
+                connectionFactory = new ConnectionFactory();
+                connectionFactory.HostName = "localhost";
+                connectionFactory.UserName = "admin";
+                connectionFactory.Password = "admin";
+                connectionFactory.VirtualHost = "/";//默认情况可省略此行
+                connectionFactory.Port = 5672;
+                connection = connectionFactory.CreateConnection();
+                channel = connection.CreateModel();
+            }catch(Exception e)
+            {
 
-            connectionFactory = new ConnectionFactory();
-            connectionFactory.HostName = "localhost";
-            connectionFactory.UserName = "admin";
-            connectionFactory.Password = "admin";
-            connectionFactory.VirtualHost = "/";//默认情况可省略此行
-            connectionFactory.Port = 5672;
-            connection = connectionFactory.CreateConnection();
-            channel = connection.CreateModel();
+            }
             //channel.QueueDeclare("SwapScope", true, false, true, null);
+            //创建共享内存
             memoryMappedFile = MemoryMappedFile.CreateOrOpen("testMmf", capacity, MemoryMappedFileAccess.ReadWrite);
             
                 //通过MemoryMappedFile的CreateViewAccssor方法获得共享内存的访问器
             ViewAccessor = memoryMappedFile.CreateViewAccessor(0, capacity);
 
-                Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
+            Type matlabAppType = System.Type.GetTypeFromProgID("Matlab.Application");
             matlab = System.Activator.CreateInstance(matlabAppType) as MLApp.MLApp;
             string path_project = System.IO.Directory.GetCurrentDirectory();
             string path_matlabwork = "cd('"+ path_project +"')";
             matlab.Execute(path_matlabwork);
 
-            webSocketServer = new WebSocketServer("ws://192.168.171.1:8089");
+            webSocketServer = new WebSocketServer("ws://192.168.171.1:8083");
             webSocketServer.AddWebSocketService<socketHander>("/");
             webSocketServer.Start();
-            
+
 
             for (int i = 0; i < 16; i++)
             {
@@ -531,11 +554,12 @@ namespace wtf
                                
                             }
 
-                            /*for (int k = 0; k < channelNum.Count; k++) {
+                            for (int k = 0; k < channelNum.Count; k++)
+                            {
                                 UserDef.freq.ElementAt(channelNum.ElementAt(k)).Clear();
-                                
+
                             }
-                            */
+
 
                             isSelectiongChanging = false;
 
@@ -571,8 +595,9 @@ namespace wtf
                                 //List<Double> y = data.ElementAt(n);      //当前的通道                        
                                 //displayFrame 是需要展示的数据帧
                                 temp_value = ((NET2991A.buffer[displayFrame, n, i] - 32768) * NET2991A.fPerLsb / 1000);
-                               // y.Add(temp_value + 0.3 * yindex);
-                                data.ElementAt(n).Add(temp_value+0.3 * yindex);
+                                // y.Add(temp_value + 0.3 * yindex);
+                                //+0.3 * yindex
+                                data.ElementAt(n).Add(temp_value);
                                /* if (UserDef.flagRecord && UserDef.NowRes != 0)
                                 {
 
@@ -601,7 +626,7 @@ namespace wtf
                         {
                             //displayLines();
                             playSelectLines();
-
+                            //Console.WriteLine("ShowOver");
                         }));
 
 
@@ -694,6 +719,7 @@ namespace wtf
                 bt_pause.Content = "重启";
                 needPause = true;
                 isContinue = false;
+               
             } else
             {
                 clearData();
@@ -1425,6 +1451,7 @@ namespace wtf
 
                     String path = fileName;//UserDef.PathDir + @"mat\" + DateTime.Now.ToString("MM-dd-H-mm-ss_") + tb_comment.Text + ".mat";
                     MatlabWriter.Write(path, matrix, "data");
+                   
                 }
 
             }
@@ -1515,9 +1542,9 @@ namespace wtf
 
 
         //计算fft
-        private Double[] computeFFT(Double [] data) {
+        private Double[] computeFFT(Double [] data,int low,int countPoint) {
             object result = null;
-           
+            
             matlab.Feval("FFT", 1, out result, data);
             object[] res = result as object[];
             double[,] resdata = res[0] as double[,];
@@ -1528,7 +1555,31 @@ namespace wtf
                 usedata[j] = resdata[0, j];
             }
             usedata[0] = 0;
+            try
+            {
 
+                double inter = Convert.ToDouble(textClasser.Text);
+                double th = Convert.ToDouble(th_box.Text);
+
+                List<Double> lis = usedata.ToList().GetRange(low, countPoint);
+                object peeksArray = null;
+                matlab.Feval("findPeeks", 1, out peeksArray, lis.ToArray(), inter, th);
+                object[] peeksA = peeksArray as object[];
+                Peeks = peeksA[0] as double[,];
+                if (Peeks == null)
+                {
+                    try
+                    {
+                        singlePoint = (Double)peeksA[0];
+                    }
+                    catch (Exception e) { }
+                }
+
+            }
+            catch (Exception e)
+            {
+
+            }
             return usedata;
         }
 
@@ -1537,18 +1588,27 @@ namespace wtf
         {
 
             //4635700.792617997 -1447480.768970162 276785.80297208356
-            double a = 4635700.792617997;
+          /*  double a = 4635700.792617997;
             double b = -1447480.768970162;
             double c = 276785.80297208356;
             double ct = c - f;
 
             double v = (-b - Math.Sqrt(b * b - 4 * a * ct)) / (2 * a);
-            //double v1 = (-b + Math.Sqrt(b * b - 4 * a * ct)) / (2 * a);
 
-            //double ks = v > v1 ? v1 : v;
+            Double vol = 0;
+            try
+            {
+                vol = Convert.ToDouble(textBox1.Text);
+            }
+            catch (Exception e)
+            {
 
+            }*/
 
-            return 600.25*v;
+            double p = parameters.ElementAt(0).ElementAt(0) * f * f + parameters.ElementAt(0).ElementAt(1)*f + parameters.ElementAt(0).ElementAt(2);
+
+            // return vol*vol*v;
+            return p;
 
         }
 
@@ -1571,11 +1631,11 @@ namespace wtf
                 {
                  
                     ViewAccessor.Flush();
-                    Byte[] charsInMMf = new Byte[2];
+                    Byte[] charsInMMf = new Byte[100];
                 //读取字符
-                    ViewAccessor.ReadArray<Byte>(0, charsInMMf, 0, 2);
+                    ViewAccessor.ReadArray<Byte>(0, charsInMMf, 0, 100);
 
-                    char[] cs = new char[2];
+                    char[] cs = new char[100];
                     for (int i = 0; i < charsInMMf.Length; i++)
                     {
 
@@ -1583,9 +1643,11 @@ namespace wtf
                     }
 
                     classer = cs;
-                    
-                    
 
+                    ViewAccessor.Flush();
+
+                    
+                    
                     /*if (charsInMMf[0] != 0 && charsInMMf[1] != 0)
                     {
                         this.textClasser.Dispatcher.Invoke(new Action(() =>
@@ -1621,8 +1683,413 @@ namespace wtf
         private List<Double> axis_f = new List<double>();
         private double highPower = 0,lowPower = 0;
 
+        private void computePower(List<Double> lis,int lowf)
+        {
+            /////////////////////////////////////////////////////////////////////////////////
+            double max1 = lis.Max();
+            int index1 = lis.IndexOf(max1);
+
+            try
+            {
+                intervalTh = Convert.ToInt32(textClasser.Text);
+
+            }catch(Exception e)
+            {
+
+            }
+
+            List<Double> left = lis.GetRange(intervalTh*4, index1 - intervalTh*5); //最大值左侧数据
+            List<Double> right = lis.GetRange(index1 + intervalTh, lis.Count - index1 - intervalTh * 4); //最大值右侧数据
+
+            double max_left = left.Max(); //左侧最大值
+            double max_right = right.Max(); //右侧最大值
+            int index2 = 0;
+
+            if (max_left > max_right)
+            {
+                index2 = left.IndexOf(max_left)+intervalTh*4;
+            }
+            else
+            {
+                index2 = right.IndexOf(max_right) + index1 + intervalTh;
+            }
+
+            //计算峰值部分波形
+            List<Double> f1;
+            List<Double> f2;
+            //如果上述两个峰值都不满足条件，则没必要进行下面的操作
+            if (max_left <= 100 && max_right <= 100)
+            {               
+                
+                highPower = computeRatio(index1 + lowf);
+                f1 = lis.GetRange(index1 - 5000, 10000);              
+                builder.Clear();
+                for (int ns = 0; ns < 2 * f1.Count; ns++)
+                {
+                    builder.Append(Math.Round(f1.ElementAt(ns % f1.Count), 2).ToString() + ",");
+
+                }
+                channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+
+            }
+
+            else
+            {
+
+                if (index1 < index2 && index1 + 5000 > index2)
+                {
+                    f1 = lis.GetRange(index1 - 5000, (int)((index2 - index1) / 2)+5000);
+                    for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                    {
+                        f1.Add(0);
+                    }
+
+                    f2 = lis.GetRange(index2 - (int)((index2 - index1) / 2), 5000 + (int)((index2 - index1) / 2));
+
+                    for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
+                    {
+
+                        f2.Insert(0, 0);
+                    }
+
+                        
+                }
+                else if (index1 > index2 && index1 - 5000 < index2)
+                {
+                    f1 = lis.GetRange(index1 - (int)((index1 - index2) / 2), 5000 + (int)((index1 - index2) / 2));
+                    for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                    {
+
+                        f1.Insert(0, 0);
+                    }
+
+                    f2 = lis.GetRange(index2 - 5000, (int)((index1 - index2) / 2) + 5000);
+                    for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
+                    {
+                        f2.Add(0);
+                    }
+
+                }
+                else
+                {
+                    f1 = lis.GetRange(index1 - 5000, 10000);
+                    f2 = lis.GetRange(index2 - 5000, 10000);
+                }
 
 
+                highPower = computeRatio(index1 + lowf);
+                lowPower = computeRatio(index2 + lowf);
+                /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
+                textOut.ScrollToEnd();*/
+
+                builder.Clear();
+                for (int ns = 0; ns < f1.Count; ns++)
+                {
+                    builder.Append(Math.Round(f1.ElementAt(ns), 2).ToString() + ",");
+                }
+                for (int ns = 0; ns < f2.Count; ns++)
+                {
+                    builder.Append(Math.Round(f2.ElementAt(ns), 2).ToString() + ",");
+                }
+
+                channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+
+
+            }
+
+            //用电源进行计算
+            String [] current = current_text.Text.Split('-');
+            String Us = volBox.Text;
+            try
+            {
+                double i1 = Convert.ToDouble(current[0]);
+                double i2 = Convert.ToDouble(current[1]);
+                List<Double> I1 = data.ElementAt(1);
+                List<Double> I2 = data.ElementAt(4);
+                double averI1 = I1.Average();
+                double averI2 = I2.Average();
+                i1 = (averI1-  i1) / 0.06;
+                i2 = (averI2 - i2) / 0.06;
+                double U = Convert.ToDouble(Us);
+                Double P1 = i1 * U;
+                Double P2 = i2 * U;
+                richTextBox.AppendText(Math.Round(P1,2)+","+Math.Round(P2,2)+"\n");
+                richTextBox.ScrollToEnd();
+
+            }
+            catch(Exception e)
+            {
+
+            }
+
+
+
+            if (classer[0] != 0 && classer[1] != 0)
+            {
+                int c1 = Convert.ToInt32(classer[0].ToString())+1;
+                int c2 = Convert.ToInt32(classer[1].ToString())+1;
+
+                heatPlotWindow.plt.PlotAnnotation("高峰:" + c1 + "号电源,功率:" + Math.Round(highPower,2) + "--" + "低峰:" + c2 + "号电源,功率:" + Math.Round(lowPower,2), fontSize: 20);
+
+            }
+            else
+            {
+                heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + Math.Round(highPower,2) + "," + Math.Round(lowPower,2), fontSize: 20);
+            }
+        }
+
+
+        private void computeHighValue(List<Double> list,int lowf,int highf,int i)
+        {
+            double[] ds = new double[list.Count];
+            for (int j = 0; j < ds.Length; j++)
+            {
+                ds[j] = list.ElementAt(j) - 0.3 * i;
+            }
+
+            Double[] usedata = computeFFT(ds,lowf,highf);
+
+
+            //获取指定频段范围
+            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+
+            double max = lis.Max();
+            double index = (double)(lis.IndexOf(max));
+
+            freq.ElementAt(channelNum.ElementAt(i)).Add(index+lowf + 0.3 * i);
+
+
+            if (freq.ElementAt(channelNum.ElementAt(i)).Count >= 2000)
+            {
+                freq.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
+            }
+            //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
+            heatPlotWindow.plt.PlotAnnotation("当前最大值为:"+(index+lowf),fontSize:20);
+            heatPlotWindow.plt.PlotSignal(freq.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+        }
+
+
+        private void computeMaxValue(List<Double> list,int lowf,int highf,int i)
+        {
+            double[] ds = new double[list.Count];
+            for (int j = 0; j < ds.Length; j++)
+            {
+                ds[j] = list.ElementAt(j) - 0.3 * i;
+            }
+
+            Double[] usedata = computeFFT(ds,lowf,highf);
+            //获取指定频段范围
+            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+            double max = lis.Max();
+            UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Add(max);
+            if (UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Count > 2000)
+            {
+                UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
+            }
+            heatPlotWindow.plt.PlotSignal(MAXVALUE.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+        }
+
+        private List<int> getPeeks()
+        {
+
+            List<int> list = new List<int>();
+            if (Peeks != null)
+            {
+                int row = Peeks.GetLength(0);
+                int col = Peeks.GetLength(1);
+                for (int i = 0; i < row; i++)
+                {
+                    for (int j = 0; j < col; j++)
+                    {
+                        list.Add((int)Peeks[i,j]);
+                       
+                    }
+                }
+                
+            }
+            Console.WriteLine("找到的峰值个数:"+list.Count);
+            return list;
+        }
+
+
+        private void computePowerModif(List<Double> F,int lowf)
+        {
+            List<int> list = getPeeks();
+            StringBuilder builder = new StringBuilder();
+            List<Double> Power = new List<double>();
+
+            if (singlePoint != 0&&list.Count==0)
+            {
+                int peekf = (int)singlePoint + lowf;
+                richTextBox.Dispatcher.BeginInvoke(new Action(() =>
+                {
+
+                    richTextBox.AppendText(peekf.ToString() + ",");
+                }));
+                Power.Add(parameters.ElementAt(0).ElementAt(0) * peekf * peekf*peekf
+                    + parameters.ElementAt(0).ElementAt(1) * peekf*peekf + parameters.ElementAt(0).ElementAt(2)*peekf+parameters.ElementAt(0).ElementAt(3));
+                List<Double> tmp = F.GetRange((int)singlePoint - 5000, 10000);
+                tmp.ForEach(s => builder.Append(s.ToString() + ","));
+
+            }
+
+
+            //List<List<Double>> peekData = new List<List<double>>();
+            for (int i = 0; i < list.Count; i++)
+            {
+                int peekf = list.ElementAt(i) + lowf;
+
+                richTextBox.Dispatcher.BeginInvoke(new Action(() =>
+                {
+
+                    richTextBox.AppendText(peekf.ToString() + ",");
+                }));
+
+                Power.Add(parameters.ElementAt(0).ElementAt(0) * peekf * peekf*peekf
+                    + parameters.ElementAt(0).ElementAt(1) * peekf*peekf + parameters.ElementAt(0).ElementAt(2)*peekf+parameters.ElementAt(0).ElementAt(3));
+
+                if (list.Count == 1)
+                {
+                    List<Double> tmp = F.GetRange(list.ElementAt(i) - 5000, 10000);
+                    tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                    //peekData.Add(tmp);
+                }
+                else if (i == 0)
+                {
+                    if (list.ElementAt(i) - 5000 <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (5000 + list.ElementAt(i) > list.ElementAt(i + 1))
+                    {
+                        List<Double> tmp = F.GetRange(list.ElementAt(i) - 5000, 5000 + (list.ElementAt(i+1) - list.ElementAt(i)) / 2);
+                        int last = tmp.Count - 1;
+                        for (int k = 0; k < 5000 - (list.ElementAt(i+1) - list.ElementAt(i)) / 2; k++)
+                        {
+                            tmp.Insert(last, 0);
+                        }
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                    else
+                    {
+                        List<Double> tmp = F.GetRange(list.ElementAt(i) - 5000, 10000);
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                }
+                else if (i == list.Count-1)
+                {
+
+                    if (list.ElementAt(i) + 5000 > F.Count)
+                    {
+                        return;
+                    }
+
+                    if (list.ElementAt(i) - 5000 < list.ElementAt(i - 1))
+                    {
+
+                        List<Double> tmp = F.GetRange((list.ElementAt(i)+list.ElementAt(i-1))/2,5000+(list.ElementAt(i)-list.ElementAt(i-1))/2);
+                        for (int k = 0; k < 5000 - (list.ElementAt(i) - list.ElementAt(i-1)) / 2; k++)
+                        {
+                            tmp.Insert(0, 0);
+                        }
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                    else
+                    {
+                        List<Double> tmp = F.GetRange(list.ElementAt(i) - 5000, 10000);
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+
+                }
+                else
+                {   //处理其他的峰值部分
+
+
+                    if (list.ElementAt(i) - 5000 > list.ElementAt(i - 1) && list.ElementAt(i) + 5000 < list.ElementAt(i + 1))
+                    {
+                        List<Double> tmp = F.GetRange(list.ElementAt(i) - 5000, 10000);
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(F.GetRange(list.ElementAt(i) - 5000, 10000));
+                    }
+                    else if (list.ElementAt(i) - 5000 > list.ElementAt(i - 1) && list.ElementAt(i) + 5000 > list.ElementAt(i + 1))
+                    {
+                        List<Double> tmp = F.GetRange(list.ElementAt(i)-5000,5000+(list.ElementAt(i+1)-list.ElementAt(i))/2);
+                        int last = tmp.Count;
+                        for (int k = 0; k < 5000 - (list.ElementAt(i + 1) - list.ElementAt(i)) / 2; k++)
+                        {
+                            tmp.Insert(last, 0);
+                        }
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                    else if (list.ElementAt(i) - 5000 < list.ElementAt(i - 1) && list.ElementAt(i) + 5000 < list.ElementAt(i + 1))
+                    {
+                        List<Double> tmp = F.GetRange((list.ElementAt(i)+list.ElementAt(i-1))/2, 5000 + (list.ElementAt(i) - list.ElementAt(i-1)) / 2);
+                        for (int k = 0; k < 5000 - (list.ElementAt(i) - list.ElementAt(i - 1)) / 2; k++)
+                        {
+                            tmp.Insert(0, 0);
+                        }
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                    else
+                    {
+
+                        List<Double> tmp = F.GetRange((list.ElementAt(i) + list.ElementAt(i - 1)) / 2, (list.ElementAt(i) - list.ElementAt(i - 1)) / 2
+                            + (list.ElementAt(i + 1) - list.ElementAt(i)) / 2);
+
+                        for (int k = 0; k < 5000 - (list.ElementAt(i) - list.ElementAt(i - 1)) / 2; k++)
+                        {
+                            tmp.Insert(0, 0);
+                        }
+                        int last = tmp.Count;
+                        for (int k = 0; k < 5000 - (list.ElementAt(i + 1) - list.ElementAt(i)) / 2; k++)
+                        {
+                            tmp.Insert(last, 0);
+                        }
+
+                        tmp.ForEach(v => builder.Append(v.ToString() + ","));
+                        //peekData.Add(tmp);
+                    }
+                }
+
+            }
+
+            if (builder.Length > 0)
+            {
+
+                richTextBox.Dispatcher.BeginInvoke(new Action(() =>
+                {
+
+                    richTextBox.AppendText("\n");
+                    richTextBox.ScrollToEnd();
+                }));
+
+                channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
+                builder.Clear();
+                if (classer.Length > 0)
+                {
+                    for(int i = 0; i < Power.Count && classer[i]!=0; i++)
+                    {
+                        builder.Append("电源"+(Convert.ToInt32(classer[i].ToString())+1)+"的输出功率为:"+Power[i]+"\n");
+                    }
+                    heatPlotWindow.plt.PlotAnnotation(builder.ToString(), fontSize: 20);
+                }
+            }
+
+            
+
+
+        }
+
+
+        private double[,] Peeks = null;
+        private Double singlePoint = 0;
         private void playSelectLines() {
             if (xdisplay.Count <= 0 && x.Count <= 0)
             {
@@ -1672,9 +2139,6 @@ namespace wtf
             }
 
 
-            if (textOut.LineCount > 1000) {
-                textOut.Clear();
-            }
 
 
             try
@@ -1688,639 +2152,253 @@ namespace wtf
             }
 
 
-            
-            for (int i = 0; i < channelNum.Count; i++) {
-                List<double> y = data.ElementAt(channelNum.ElementAt(i));
-                if (pointIndex.Count > 0)
-                {
-                    ydisplay.Clear();
-                    foreach (int m in pointIndex)
-                    {
-                        ydisplay.Add(y.ElementAt(m));
-                    }
-                    if (ydisplay.Count > 0)
-                    {
 
-                        int lowf = 0;
-                        int highf = ydisplay.Count/2-1;
-                        if (textBox.Text != "0") {
-                            String[] ts = textBox.Text.Split('-');
-                            try {
-                                lowf = Convert.ToInt32(ts[0]);
-                                highf = Convert.ToInt32(ts[1]);
-                            
-                            } catch (Exception) { }
-                        
-                        }
-
-                        wavePlotWindow.plt.PlotSignal(ydisplay.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
-                        
-                        if (freqflag)
-                        {
-
-                            double[] ds = new double[ydisplay.Count];
-                            for (int j = 0; j < ds.Length; j++)
-                            {
-                                
-
-                                ds[j] = y.ElementAt(j) - 0.3 * i;
-                            }
-
-                            Double[] usedata = computeFFT(ds);
-
-                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-
-                            if (computeFlag)
-                            {
-                                /////////////////////////////////////////////////////////////////////////////////
-                                double max1 = lis.Max();
-                                int index1 = lis.IndexOf(max1);
-
-                                List<Double> left = lis.GetRange(0, index1 - intervalTh);
-                                List<Double> right = lis.GetRange(index1 + intervalTh, lis.Count - index1 - intervalTh*4);
-
-                                double max_left = left.Max();
-                                double max_right = right.Max();
-                                int index2 = 0;
-
-                                if (max_left > max_right)
-                                {
-                                    index2 = left.IndexOf(max_left);
-                                }
-                                else
-                                {
-                                    index2 = right.IndexOf(max_right) + index1 + intervalTh;
-                                }
-                                List<Double> f1;//= lis.GetRange(index1 - 5000, 10000);
-                                List<Double> f2;
-
-                                if (max_left <= 100 && max_right <= 100)
-                                {
-                                    //double p1 = computeRatio(index1 + lowf);
-                                    highPower = computeRatio(index1 + lowf);
-                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
-                                    textOut.ScrollToEnd();*/
-                                    f1 = lis.GetRange(index1 - 5000, 10000);
-                                    //f2 = f1;
-                                    builder.Clear();
-                                    for (int ns = 0; ns < 2 * f1.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f1.ElementAt(ns % f1.Count), 2).ToString() + ",");
-
-                                    }
-                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
-
-                                }
-
-                                else
-                                {
-
-                                    if (index1 < index2 && index1 + 5000 > index2)
-                                    {
-                                        f1 = lis.GetRange(index1 - 5000, (int)((index2 - index1) / 2));
-                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
-                                        {
-                                            f1.Add(0);
-                                        }
-
-                                        f2 = lis.GetRange(index2 - (int)((index2 - index1) / 2), 5000 + (int)((index2 - index1) / 2));
-
-                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
-                                        {
-
-                                            f2.Insert(0, 0);
-                                        }
-
-
-                                    }
-                                    else if (index1 > index2 && index1 - 5000 < index2)
-                                    {
-                                        f1 = lis.GetRange(index1 - (int)((index1 - index2) / 2), 5000 + (int)((index1 - index2) / 2));
-                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
-                                        {
-
-                                            f1.Insert(0, 0);
-                                        }
-
-                                        f2 = lis.GetRange(index2 - 5000, (int)((index1 - index2) / 2)+5000);
-                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
-                                        {
-                                            f2.Add(0);
-                                        }
-
-                                    }
-                                    else
-                                    {
-                                        f1 = lis.GetRange(index1 - 5000, 10000);
-                                        f2 = lis.GetRange(index2 - 5000, 10000);
-                                    }
-
-
-                                    highPower = computeRatio(index1 + lowf);
-                                    lowPower = computeRatio(index2 + lowf);
-                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
-                                    textOut.ScrollToEnd();*/
-
-                                    builder.Clear();
-                                    for (int ns = 0; ns < f1.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f1.ElementAt(ns), 2).ToString() + ",");
-                                    }
-                                    for (int ns = 0; ns < f2.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f2.ElementAt(ns), 2).ToString() + ",");
-                                    }
-
-                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
-
-
-                                }
-
-
-                                if (classer[0] != 0 && classer[1] != 0)
-                                {
-                                    heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:" + highPower + "--" + "低峰:" + classer[1] + "号电源,功率:" + lowPower, fontSize: 20);
-
-                                }
-                                else
-                                {
-                                    heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
-                                }
-
-
-
-
-                            }
-                            ////////////////////////////////////////////////////////////////////////////////////////////
-
-
-                            UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
-
-                            for (int c = 0; c < lis.Count; c++)
-                            {
-                                if (channelNum.ElementAt(i) == 12)
-                                {
-                                    lis[c] = lis[c] + i;
-                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
-                                }
-                                else
-                                {
-                                    lis[c] = lis[c];
-                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
-                                }
-                            }
-
-                            //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                            axis_f.Clear();
-                            for (int ns = 0; ns < lis.Count; ns++)
-                            {
-                                axis_f.Add(ns + lowf);
-                            }
-
-                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                            heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                        } else if (computeHigh) {
-
-                            if (channelNum.ElementAt(i) == 15)
-                            {
-                                double[] ds = new double[ydisplay.Count];
-                                for (int j = 0; j < ds.Length; j++)
-                                {
-                                    ds[j] = y.ElementAt(j) - 0.3 * i;
-                                }
-
-                                Double[] usedata = computeFFT(ds);
-
-
-                                //获取指定频段范围
-                                List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                                /*lis.Sort();
-     
-                                double max1 = lis[lis.Count - 1];
-                                double max2 = lis[lis.Count - 2];
-
-                                int index1 = usedata.ToList<Double>().IndexOf(max1);
-                                int index2 = usedata.ToList<Double>().IndexOf(max2);*/
-
-                                double max1 = lis.Max();
-                                int index1 = lis.IndexOf(max1);
-
-                                List<Double> left = lis.GetRange(0, index1 - 2000);
-                                List<Double> right = lis.GetRange(index1+2000,lis.Count-index1-2000);
-
-                                double max_left = left.Max();
-                                double max_right = right.Max();
-                                int index2 = 0;
-
-                                if (max_left > max_right)
-                                {
-                                    index2 = left.IndexOf(max_left);
-
-                                }
-                                else {
-
-                                    index2 = right.IndexOf(max_right) + index1 + 2000;
-                                
-                                }
-
-
-
-           
-                       
-
-                                UserDef.freq11.ElementAt(0).Add(index1);
-                                UserDef.freq11.ElementAt(1).Add(index2);
-
-                                if (freq11.ElementAt(0).Count >= 2000)
-                                {
-                                    freq11.ElementAt(0).RemoveAt(0);
-                                    freq11.ElementAt(1).RemoveAt(0);
-                                }
-
-                                heatPlotWindow.plt.PlotSignal(freq11.ElementAt(0).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                                heatPlotWindow.plt.PlotSignal(freq11.ElementAt(1).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-
-                            }
-                            else
-                            {
-                                double[] ds = new double[ydisplay.Count];
-                                for (int j = 0; j < ds.Length; j++)
-                                {
-                                    ds[j] = y.ElementAt(j) - 0.3 * i;
-                                }
-
-                                Double[] usedata = computeFFT(ds);
-
-
-                                //获取指定频段范围
-                                List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-
-
-
-                                double max = lis.Max();
-                                double index = (double)(lis.IndexOf(max));
-
-                                freq.ElementAt(channelNum.ElementAt(i)).Add(index + 0.3 * i);
-
-
-                                if (freq.ElementAt(channelNum.ElementAt(i)).Count >= 2000)
-                                {
-                                    freq.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
-                                }
-                                //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                                heatPlotWindow.plt.PlotSignal(freq.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                            }
-                            }
-                        else if (computeMax)
-                        {
-                            double[] ds = new double[ydisplay.Count];
-                            for (int j = 0; j < ds.Length; j++)
-                            {
-                                ds[j] = y.ElementAt(j) - 0.3 * i;
-                            }
-
-                            Double[] usedata = computeFFT(ds);
-                            //获取指定频段范围
-                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                            double max = lis.Max();
-                            UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Add(max);
-                            if (UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Count > 2000)
-                            {
-                                UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
-                            }
-                            heatPlotWindow.plt.PlotSignal(MAXVALUE.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                        }
-                        else if (dwtflag)
-                        {
-                            Signal<Double> sig = new Signal<double>(ydisplay.ToArray());
-                            DiscreteWaveletTransform rs = DiscreteWaveletTransform.Estimate(sig, Wavelets.Daubechies(2), new ZeroPadding<Double>());
-                            DiscreteWaveletTransform rs1 = rs.EstimateMultiscale(new ZeroPadding<Double>(), 4);
-                            heatPlotWindow.plt.PlotSignal(rs1.Approximation.ToArray(), (int)UserDef.Frequency / 2, startTime, label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-
-                        }
-
-
-                    }
-                }
-
-                else
-                {
-                    if (y.Count > 0)
-                    {
-
-                        int lowf = 0;
-                        int highf = y.Count/2-1;
-                        if (textBox.Text != "0")
-                        {
-                            String[] ts = textBox.Text.Split('-');
-                            try
-                            {
-                                lowf = Convert.ToInt32(ts[0]);
-                                highf = Convert.ToInt32(ts[1]);
-
-                            }
-                            catch (Exception) { }
-
-                        }
-
-                        wavePlotWindow.plt.PlotSignal(y.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
-                        
-                        if (freqflag)
-                        {
-
-                            //double[] res = Filter(y.ToArray(), i);
-
-                            double[] ds = new double[y.Count];
-                            for (int j = 0; j < ds.Length; j++) {
-                                ds[j] = y.ElementAt(j) - 0.3 * i;
-                            }
-
-                            Double[] usedata = computeFFT(ds);
-                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                            if (computeFlag)
-                            {
-
-                                /////////////////////////////////////////////////////////////////////////////////
-                                double max1 = lis.Max();
-                                int index1 = lis.IndexOf(max1);
-
-                                List<Double> left = lis.GetRange(0, index1 - intervalTh);
-                                List<Double> right = lis.GetRange(index1 + intervalTh, lis.Count - index1 - intervalTh*4);
-
-                                double max_left = left.Max();
-                                double max_right = right.Max();
-                                int index2 = 0;
-
-                                if (max_left > max_right)
-                                {
-                                    index2 = left.IndexOf(max_left);
-                                }
-                                else
-                                {
-                                    index2 = right.IndexOf(max_right) + index1 + 5000;
-                                }
-
-
-                                List<Double> f1;//= lis.GetRange(index1 - 5000, 10000);
-                                List<Double> f2;
-
-                                if (max_left <= 100 && max_right <= 100)
-                                {
-                                    highPower = computeRatio(index1 + lowf);
-
-                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p1, 2) + "\n");
-                                    textOut.ScrollToEnd();*/
-                                    f1 = lis.GetRange(index1 - 5000, 10000);
-                                    //f2 = f1;
-                                    builder.Clear();
-                                    for (int ns = 0; ns < 2 * f1.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f1.ElementAt(ns % f1.Count), 2).ToString() + ",");
-
-                                    }
-                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
-
-                                }
-
-                                else
-                                {
-
-                                    if (index1 < index2 && index1 + 5000 > index2)
-                                    {
-                                        f1 = lis.GetRange(index1 - 5000, (int)((index2 - index1) / 2));
-                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
-                                        {
-                                            f1.Add(0);
-                                        }
-
-                                        f2 = lis.GetRange(index2 - (int)((index2 - index1) / 2), 5000 + (int)((index2 - index1) / 2));
-
-                                        for (int k = 0; k < 5000 - (int)((index2 - index1) / 2); k++)
-                                        {
-
-                                            f2.Insert(0, 0);
-                                        }
-
-
-                                    }
-                                    else if (index1 > index2 && index1 - 5000 < index2)
-                                    {
-                                        f1 = lis.GetRange(index1 - (int)((index1 - index2) / 2), 5000 + (int)((index1 - index2) / 2));
-                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
-                                        {
-
-                                            f1.Insert(0, 0);
-                                        }
-
-                                        f2 = lis.GetRange(index2 - 5000, (int)((index1 - index2) / 2)+5000);
-                                        for (int k = 0; k < 5000 - (int)((index1 - index2) / 2); k++)
-                                        {
-                                            f2.Add(0);
-                                        }
-
-                                    }
-                                    else
-                                    {
-                                        f1 = lis.GetRange(index1 - 5000, 10000);
-                                        f2 = lis.GetRange(index2 - 5000, 10000);
-                                    }
-
-                                    highPower = computeRatio(index1 + lowf);
-                                    lowPower = computeRatio(index2 + lowf);
-                                    /*textOut.AppendText(Math.Round(p1, 2) + "---" + Math.Round(p2, 2) + "\n");
-                                    textOut.ScrollToEnd();*/
-
-                                    builder.Clear();
-                                    for (int ns = 0; ns < f1.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f1.ElementAt(ns), 2).ToString() + ",");
-                                    }
-                                    for (int ns = 0; ns < f2.Count; ns++)
-                                    {
-                                        builder.Append(Math.Round(f2.ElementAt(ns), 2).ToString() + ",");
-                                    }
-
-                                    channel.BasicPublish("", "SwapScope", null, Encoding.UTF8.GetBytes(builder.ToString()));
-
-
-                                }
-
-
-
-                                if (classer[0] != 0 && classer[1] != 0)
-                                {
-                                    heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:" + highPower + "--" + "低峰:" + classer[1] + "号电源,功率:" + lowPower, fontSize: 20);
-
-                                }
-                                else
-                                {
-                                    heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
-                                }
-
-
-                            }
-                            ////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-                            UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
-
-
-                            for (int c = 0; c < lis.Count; c++)
-                            {
-                                if (channelNum.ElementAt(i) == 12)
-                                {
-                                    lis[c] = lis[c] + i;
-                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
-                                }
-                                else
-                                {
-                                    lis[c] = lis[c];
-                                    UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
-                                }
-
-                            }
-                            //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                            axis_f.Clear();
-                            for (int ns = 0; ns < lis.Count; ns++)
-                            {
-                                axis_f.Add(ns + lowf);
-                            }
-
-                            //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                            heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-
-                        } else if (computeHigh) {
-
-                            if (channelNum.ElementAt(i) == 15)
-                            {
-                                double[] ds = new double[y.Count];
-                                for (int j = 0; j < ds.Length; j++)
-                                {
-                                    ds[j] = y.ElementAt(j) - 0.3 * i;
-                                }
-
-                                Double[] usedata = computeFFT(ds);
-
-
-                                //获取指定频段范围
-                                List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                                double max1 = lis.Max();
-                                int index1 = lis.IndexOf(max1);
-
-                                List<Double> left = lis.GetRange(0, index1 - 2000);
-                                List<Double> right = lis.GetRange(index1 + 2000, lis.Count - index1 - 2000);
-
-                                double max_left = left.Max();
-                                double max_right = right.Max();
-                                int index2 = 0;
-
-                                if (max_left > max_right)
-                                {
-                                    index2 = left.IndexOf(max_left);
-
-                                }
-                                else
-                                {
-
-                                    index2 = right.IndexOf(max_right) + index1 + 2000;
-
-                                }
-
-                               
-
-                                UserDef.freq11.ElementAt(0).Add(index1);
-                                UserDef.freq11.ElementAt(1).Add(index2);
-
-                                if (freq11.ElementAt(0).Count >= 2000)
-                                {
-                                    freq11.ElementAt(0).RemoveAt(0);
-                                    freq11.ElementAt(1).RemoveAt(0);
-                                }
-
-                                heatPlotWindow.plt.PlotSignal(freq11.ElementAt(0).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                                heatPlotWindow.plt.PlotSignal(freq11.ElementAt(1).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-
-
-                            }
-                            else
-                            {
-                                double[] ds = new double[y.Count];
-                                for (int j = 0; j < ds.Length; j++)
-                                {
-                                    ds[j] = y.ElementAt(j) - 0.3 * i;
-                                }
-
-                                Double[] usedata = computeFFT(ds);
-
-                                List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-
-                                double max = lis.Max();
-                                double index = (double)(lis.IndexOf(max));
-
-                                //(double)index/ (Double)UserDef.Frequency
-                                freq.ElementAt(channelNum.ElementAt(i)).Add(index + 0.3 * i);
-
-                                if (freq.ElementAt(channelNum.ElementAt(i)).Count >= 2000)
-                                {
-                                    freq.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
-                                }
-
-                                //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
-                                heatPlotWindow.plt.PlotSignal(freq.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                            }
-                        }
-                        else if (computeMax)
-                        {
-                            double[] ds = new double[y.Count];
-                            for (int j = 0; j < ds.Length; j++)
-                            {
-                                ds[j] = y.ElementAt(j) - 0.3 * i;
-                            }
-
-                            Double[] usedata = computeFFT(ds);
-                            //获取指定频段范围
-                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
-                            double max = lis.Max();
-                            UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Add(max);
-                            if (UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).Count > 2000)
-                            {
-                                UserDef.MAXVALUE.ElementAt(channelNum.ElementAt(i)).RemoveAt(0);
-                            }
-                            heatPlotWindow.plt.PlotSignal(MAXVALUE.ElementAt(channelNum.ElementAt(i)).ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-                        }
-                        else if (dwtflag)
-                        {
-                            Signal<Double> sig = new Signal<double>(y.ToArray());
-                            DiscreteWaveletTransform rs = DiscreteWaveletTransform.Estimate(sig, Wavelets.Daubechies(2), new ZeroPadding<Double>());
-                            DiscreteWaveletTransform rs1 = rs.EstimateMultiscale(new ZeroPadding<Double>(), 4);
-                            heatPlotWindow.plt.PlotSignal(rs1.Approximation.ToArray(), (int)UserDef.Frequency / 2, startTime, label: String.Format("通道:{0}", channelNum.ElementAt(i)));
-
-                        }
-
-
-
-                    }
-                }
-               
-            }
-
-            /*if (classer[0] != 0 && classer[1] != 0) {
-                heatPlotWindow.plt.PlotAnnotation("高峰:" + classer[0] + "号电源,功率:"+highPower + "--" + "低峰:" + classer[1] + "号电源,功率:"+lowPower,fontSize:20);
-
-            }
-            else
+            for (int i = 0; i < channelNum.Count; i++)
             {
-                heatPlotWindow.plt.PlotAnnotation("电源功率分别是:" + highPower + "," + lowPower, fontSize: 20);
-            }*/
 
-            wavePlotWindow.plt.Legend();
-            heatPlotWindow.plt.Legend();
-            
-            wavePlotWindow.Render();
-            heatPlotWindow.Render();
-            
+
+                    List<double> y = data.ElementAt(channelNum.ElementAt(i));
+                    if (pointIndex.Count > 0)
+                    {
+                        ydisplay.Clear();
+                        foreach (int m in pointIndex)
+                        {
+                            ydisplay.Add(y.ElementAt(m)+0.3*i);
+                        }
+                        if (ydisplay.Count > 0)
+                        {
+
+                            int lowf = 0;
+                            int highf = ydisplay.Count / 2;
+                            if (textBox.Text != "0")
+                            {
+                                String[] ts = textBox.Text.Split('-');
+                                try
+                                {
+                                    lowf = Convert.ToInt32(ts[0]);
+                                    highf = Convert.ToInt32(ts[1]);
+
+                                }
+                                catch (Exception) { }
+
+                            }
+
+                            wavePlotWindow.plt.PlotSignal(ydisplay.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
+                            
+                            if (freqflag&& channelNum.ElementAt(i) != 13 && channelNum.ElementAt(i) != 14)
+                            {
+
+                                double[] ds = new double[ydisplay.Count];
+                                for (int j = 0; j < ds.Length; j++)
+                                {
+
+
+                                    ds[j] = ydisplay.ElementAt(j) - 0.3 * i;
+                                }
+
+                                Double[] usedata = computeFFT(ds,lowf,highf);
+                                
+
+
+                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+
+
+
+
+                            if (computeFlag)
+                            {
+                                //computePower(lis, lowf);
+                                computePowerModif(lis, lowf);
+                            }
+
+                                ////////////////////////////////////////////////////////////////////////////////////////////
+
+
+                                UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
+
+                                for (int c = 0; c < lis.Count; c++)
+                                {
+                                    if (channelNum.ElementAt(i) == 12)
+                                    {
+                                        lis[c] = lis[c] + i;
+                                        UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                    }
+                                    else
+                                    {
+                                        lis[c] = lis[c];
+                                        UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                    }
+                                }
+
+                                //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
+                                axis_f.Clear();
+                                for (int ns = 0; ns < lis.Count; ns++)
+                                {
+                                    axis_f.Add(ns + lowf);
+                                }
+
+                                /*List<Double> res = new List<double>();
+                                for (int j = 0; j < lis.Count; j++)
+                                {
+                                    res.Add(lis.ElementAt(j));
+                                    for (int k = 0; k < UserDef.Frequency/ydisplay.Count-1; k++)
+                                    {
+                                        res.Add(0);
+                                    }
+                                }*/
+
+                                //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                                heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                            }
+                            else if (computeHigh&& channelNum.ElementAt(i) != 13 && channelNum.ElementAt(i) != 14)
+                            {  //计算最大频率点
+
+                                computeHighValue(ydisplay, lowf, highf, i);
+
+                            }
+                            else if (computeMax&& channelNum.ElementAt(i) != 1 && channelNum.ElementAt(i) != 4) //计算最大幅值
+                            {
+                                computeMaxValue(ydisplay, lowf, highf, i);
+                            }
+                            else if (dwtflag&& channelNum.ElementAt(i) != 1 && channelNum.ElementAt(i) != 4)
+                            {
+                                if (form != null)
+                                    form.setData(ydisplay);
+
+                            }
+
+
+                        }
+                    }
+
+                    else
+                    {
+                        if (y.Count > 0)
+                        {
+                            ydisplay.Clear();
+                            for(int n = 0; n < y.Count; n++)
+                            {
+                                ydisplay.Add(y.ElementAt(n)+0.3*i);
+                            }
+
+
+                            int lowf = 0;
+                            int highf = ydisplay.Count / 2;
+                            if (textBox.Text != "0")
+                            {
+                                String[] ts = textBox.Text.Split('-');
+                                try
+                                {
+                                    lowf = Convert.ToInt32(ts[0]);
+                                    highf = Convert.ToInt32(ts[1]);
+
+                                }
+                                catch (Exception) { }
+
+                            }
+
+                            wavePlotWindow.plt.PlotSignal(ydisplay.ToArray(), UserDef.Frequency, startTime, label: String.Format("通道 {0}", channelNum.ElementAt(i)));
+
+                            if (freqflag && channelNum.ElementAt(i) != 13 && channelNum.ElementAt(i) != 14)
+                            {
+
+                                //double[] res = Filter(y.ToArray(), i);
+
+                                double[] ds = new double[ydisplay.Count];
+                                for (int j = 0; j < ds.Length; j++)
+                                {
+                                    ds[j] = ydisplay.ElementAt(j) - 0.3 * i;
+                                }
+
+                                Double[] usedata = computeFFT(ds,lowf,highf);
+                                
+
+
+                            List<Double> lis = usedata.ToList<Double>().GetRange(lowf, highf);
+                           
+
+
+
+                            if (computeFlag)
+                                {
+
+                                //computePower(lis, lowf);
+                                computePowerModif(lis, lowf);
+
+                            }
+                                ////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+                                UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Clear();
+
+
+                                for (int c = 0; c < lis.Count; c++)
+                                {
+                                    if (channelNum.ElementAt(i) == 12)
+                                    {
+                                        lis[c] = lis[c] + i;
+                                        UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                    }
+                                    else
+                                    {
+                                        lis[c] = lis[c];
+                                        UserDef.dataToSave.ElementAt(channelNum.ElementAt(i)).Add(lis[c]);
+                                    }
+
+                                }
+                                //freq.ElementAt(channelNum.ElementAt(i)).ToArray()
+                                //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                                axis_f.Clear();
+                                for (int ns = 0; ns < lis.Count; ns++)
+                                {
+                                    axis_f.Add(ns + lowf);
+                                }
+
+                                /*   List<Double> res = new List<double>();
+                                   for (int j = 0; j < lis.Count; j++)
+                                   {
+                                       res.Add(lis.ElementAt(j));
+                                       for (int k = 0; k < UserDef.Frequency / y.Count-1; k++)
+                                       {
+                                           res.Add(0);
+                                       }
+                                   }*/
+
+                                //heatPlotWindow.plt.PlotSignal(lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+                                heatPlotWindow.plt.PlotSignalXY(axis_f.ToArray(), lis.ToArray(), label: String.Format("通道:{0}", channelNum.ElementAt(i)));
+
+                            }
+                            else if (computeHigh && channelNum.ElementAt(i) != 1 && channelNum.ElementAt(i) != 4)
+                            {
+
+                                computeHighValue(ydisplay, lowf, highf, i);
+                            }
+                            else if (computeMax && channelNum.ElementAt(i) != 1 && channelNum.ElementAt(i) != 4)
+                            {
+                                computeMaxValue(ydisplay, lowf, highf, i);
+                            }
+                            else if (dwtflag && channelNum.ElementAt(i) != 1 && channelNum.ElementAt(i) != 4)
+                            {
+                                if (form != null)
+                                    form.setData(ydisplay);
+
+
+                            }
+
+
+
+                        }
+                    }
+
+                }
+
+                wavePlotWindow.plt.Legend();
+                heatPlotWindow.plt.Legend();
+
+                wavePlotWindow.Render();
+                heatPlotWindow.Render();
+               
         }
 
 
@@ -2425,32 +2503,154 @@ namespace wtf
 
         private bool computeFlag = false;
 
+
+        private void ComputeThread()
+        {
+            if (p == null)
+            {
+                p = new Process();
+                String path = Directory.GetCurrentDirectory();
+                path = "I:\\west_tubecopy\\west_tubecopy\\wtf\\bin\\x86\\Debug\\ClasserFiles\\sparate.py";
+                //path = "python " + path + "\\ClasserFiles\\sparate.py";
+                //p.StartInfo.FileName = "cmd.exe";
+                p.StartInfo.FileName = "C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python37\\python.exe";
+                p.StartInfo.Arguments = path;
+                //是否使用操作系统shell启动
+                p.StartInfo.UseShellExecute = false;
+                // 接受来自调用程序的输入信息
+                p.StartInfo.RedirectStandardInput = true;
+                //输出信息
+                p.StartInfo.RedirectStandardOutput = true;
+                // 输出错误
+                p.StartInfo.RedirectStandardError = true;
+                //不显示程序窗口
+                p.StartInfo.CreateNoWindow = true;
+                //启动程序
+                bool fs = p.Start();
+                //p.StandardInput.WriteLine(path);
+                //p.StandardInput.WriteLine("exit");
+                //p.StandardInput.AutoFlush = true;
+                if (fs)
+                {
+                    
+                    textBox.Dispatcher.BeginInvoke(new Action(() => {
+                        textbox.AppendText("后台计算程序已启动！！\n");
+
+                    }));
+                    computeFlag = true;
+                    /*p.WaitForExit();
+                    p.Close();*/
+                }
+                else
+                {
+                    textBox.Dispatcher.BeginInvoke(new Action(() => {
+                        textbox.AppendText("计算程序启动失败！！\n");
+
+                    }));
+                    
+                }
+                
+
+
+
+            }
+            //textbox.AppendText("后台计算程序已启动！！\n");
+        }
+
+
         private void button_Click(object sender, RoutedEventArgs e)
         {
-            if (freqflag == true) {
 
-                if (computeFlag == false) {
+            
 
+            
+            //ClasserFiles
+            if (freqflag == true)
+            {
+
+                if (computeFlag == false)
+                {
                     computeFlag = true;
+
+                    //new Thread(new ThreadStart(ComputeThread)).Start();
+                    //ComputeThread();
+                    /*if (p == null)
+                    {
+                        p = new Process();
+                        String path = Directory.GetCurrentDirectory();
+                        path = path + "\\ClasserFiles\\sparate.py";
+                        //path = "python " + path + "\\ClasserFiles\\sparate.py";
+                        //p.StartInfo.FileName = "cmd.exe";
+                        p.StartInfo.FileName = "C:\\Users\\Admin\\AppData\\Local\\Programs\\Python\\Python37\\python.exe";
+                        p.StartInfo.Arguments = path;
+                        //是否使用操作系统shell启动
+                        p.StartInfo.UseShellExecute = false;
+                        // 接受来自调用程序的输入信息
+                        p.StartInfo.RedirectStandardInput = true;
+                        //输出信息
+                        p.StartInfo.RedirectStandardOutput = true;
+                        // 输出错误
+                        p.StartInfo.RedirectStandardError = true;
+                        //不显示程序窗口
+                        p.StartInfo.CreateNoWindow = true;
+                        //启动程序
+                        bool fs = p.Start();
+                        //p.StandardInput.WriteLine(path);
+                        p.StandardInput.WriteLine("exit");
+                        p.StandardInput.AutoFlush = true;
+                        if (fs)
+                        {
+
+                            textBox.Dispatcher.BeginInvoke(new Action(() => {
+                                textbox.AppendText("后台计算程序已启动！！\n");
+
+                            }));
+                            computeFlag = true;
+                            *//*p.WaitForExit();
+                            p.Close();*//*
+                        }
+                        else
+                        {
+                            textBox.Dispatcher.BeginInvoke(new Action(() => {
+                                textbox.AppendText("计算程序启动失败！！\n");
+
+                            }));
+
+                        }
+
+
+                    }*/
+
+
+
 
                 }
                 else
                 {
+
                     computeFlag = false;
                 }
-            
+
             }
         }
+        private DWTForm form = null;
 
         private void button1_Click(object sender, RoutedEventArgs e)
         {
             
+
             if (dwtflag == false)
             {
                 dwtflag = true;
+                form = new DWTForm();
+                form.Show();
             }
             else {
                 dwtflag = false;
+                if (form != null)
+                {
+                    form.Dispose();
+                }
             
             }
         }
@@ -2477,6 +2677,22 @@ namespace wtf
             }
 
         }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (p != null)
+            {
+                Process[] processes = Process.GetProcessesByName("python");
+                foreach(Process o in processes)
+                {
+                    o.Kill();
+                }
+                /*p.WaitForExit();
+                p.Close();*/
+            }
+        }
+
+       
 
         //保存特征
         private void button5_Click(object sender, RoutedEventArgs e)
@@ -2610,26 +2826,7 @@ namespace wtf
                 }
             }
         }
-        // motionPlatform.move(0, -10000, 0);
-
-        // motionPlatform.move(0, 0, 6000);
-        // motionPlatform.move(0, 100000, 0);
-        //  motionPlatform.move(0, 0, -6000);
-        /* AxZOLIXSC300Lib.AxZolixSC300 sc300 = new AxZOLIXSC300Lib.AxZolixSC300();
-
-         ((System.ComponentModel.ISupportInitialize)(sc300)).BeginInit();
-         ((System.ComponentModel.ISupportInitialize)(sc300)).EndInit();
-         sc300.ComPort = 3;
-         if (sc300.Open())
-         {
-             Console.WriteLine("connected");
-
-         } else
-         {
-             Console.WriteLine("cannot conneted");
-         }*/
-
-        // }
+       
     }
 
 

@@ -349,6 +349,7 @@ namespace wtf
 
      
         public static UInt64 currentFrameCount = 0;
+        //缓冲区的大小
         public static UInt16[,,] buffer = new UInt16[2, 16, 1000000];//16 channel, 500k/s
         public static Single fPerLsb = 0.0F;
         static void ReadDataFun()
@@ -386,23 +387,29 @@ namespace wtf
             // 根据用户设置的读取长度设置每通道数据的读取长度
             UInt32 nChanSize = (uint)(cfgPara.nReadLength * 2);
             // 读数据
-            
 
+           
             while (true)
             {
                 try
                 {
+                    
                     if (needStop)
                         break;
-                    dwReadSampsPerChan = 0;
+                    dwReadSampsPerChan = 1024;
 
+                    //long t1 = System.DateTime.Now.Ticks;
                     // 连续采集模式下数据排列顺序为16路DI第一个采样点、CH0第一个采样点、CH1第一个采样点、CH2第一采样点.....CH15第一个采样点、16路DI第二个采样点...
                     if (NET2991A.NET2991_AI_ReadBinary(cfgPara.hDevice, ref dwReadChan, nAIArray, dwReadSampsPerChan, ref dwSampsPerChanRead, ref dwAvailSampsPerChan, fTimeOut) == 0)
                     {
+                      
                         if (needStop)
                             break;
                         continue;
                     }
+                    /*long t2 = System.DateTime.Now.Ticks;
+                    Console.WriteLine("wwwwwwwwww  " + (t2 - start) / 10000000);
+                    start = t2;*/
                     if (needStop)
                         break;
                     //16通道，采集够1秒数据在处理
@@ -417,18 +424,20 @@ namespace wtf
 
                         for (int i = 0; i < 16; i++)
                         {
-                            buffer[currentFrameCount%2, i, indexPerChannel] = nAIArray[bn + i];
+                            buffer[currentFrameCount % 2, i, indexPerChannel] = nAIArray[bn + i];
                         }
                         indexPerChannel++;
                     }
 
                     bufferCount += dwSampsPerChanRead;
+                    
                     if (bufferCount < (ulong)UserDef.Frequency*16 + 1 - dwSampsPerChanRead)// 500kps*16
                     { //如果还不够一帧数据
                         continue;
                     }
                     else
                     {
+                      
                         bufferCount = 0;
                         indexPerChannel = 0;
                         currentFrameCount++;
@@ -466,7 +475,7 @@ namespace wtf
                 cfgPara.AAIParam.CHParam[nIndex].nRefGround = NET2991A.NET2991A_AI_REFGND_RSE;
             }
 
-            cfgPara.AAIParam.fSampleRate = UserDef.Frequency; //500000;
+            cfgPara.AAIParam.fSampleRate = UserDef.Frequency; //;
             cfgPara.AAIParam.nSampleMode = NET2991A.NET2991A_AI_SAMPMODE_CONTINUOUS;
             cfgPara.AAIParam.nSampsPerChan = 102400;
             cfgPara.AAIParam.nClockSource = NET2991A.NET2991A_AI_CLOCKSRC_LOCAL;
